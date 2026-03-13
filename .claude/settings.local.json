@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm install -D tailwindcss @tailwindcss/vite)",
+      "Bash(npm install @supabase/supabase-js react-router-dom react-hot-toast lucide-react)",
+      "Bash(npm run build)"
+    ]
+  }
+}
