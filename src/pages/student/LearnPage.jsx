@@ -100,14 +100,35 @@ export default function LearnPage() {
   const selectedLabel = selectedTopic === '__no_topic__' ? 'Chưa phân loại' : selectedTopic
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
-      {/* Left: topic list */}
-      <div className="w-72 shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto">
-        <div className="p-4 border-b border-gray-200">
+    <div className="flex flex-col md:flex-row md:h-[calc(100vh-64px)]">
+      {/* Topic list — horizontal scroll on mobile, vertical sidebar on desktop */}
+      <div className="md:w-72 shrink-0 md:border-r border-gray-200 bg-gray-50 md:overflow-y-auto">
+        {/* Desktop header */}
+        <div className="hidden md:block p-4 border-b border-gray-200">
           <h1 className="text-base font-bold text-gray-800">Học tập</h1>
           <p className="text-xs text-gray-400 mt-0.5">Khối {profile?.grade}</p>
         </div>
-        <div className="p-2 space-y-1">
+        {/* Mobile: horizontal scrollable tabs */}
+        <div className="flex md:hidden overflow-x-auto gap-2 p-3 border-b border-gray-200">
+          {topicList.map(topicKey => {
+            const label = topicKey === '__no_topic__' ? 'Chưa phân loại' : topicKey
+            const count = (grouped[topicKey] || []).length
+            const isSelected = selectedTopic === topicKey
+            return (
+              <button
+                key={topicKey}
+                onClick={() => setSelectedTopic(topicKey)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition flex items-center gap-1
+                  ${isSelected ? 'bg-indigo-600 text-white font-medium' : 'bg-white border border-gray-200 text-gray-600'}`}
+              >
+                {label}
+                {count > 0 && <span className={`text-xs ${isSelected ? 'opacity-80' : 'text-gray-400'}`}>{count}</span>}
+              </button>
+            )
+          })}
+        </div>
+        {/* Desktop: vertical list */}
+        <div className="hidden md:block p-2 space-y-1">
           {topicList.map(topicKey => {
             const label = topicKey === '__no_topic__' ? 'Chưa phân loại' : topicKey
             const count = (grouped[topicKey] || []).length
@@ -117,10 +138,7 @@ export default function LearnPage() {
                 key={topicKey}
                 onClick={() => setSelectedTopic(topicKey)}
                 className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition flex items-center justify-between gap-2
-                  ${isSelected
-                    ? 'bg-indigo-600 text-white font-medium'
-                    : 'text-gray-700 hover:bg-gray-200'
-                  }`}
+                  ${isSelected ? 'bg-indigo-600 text-white font-medium' : 'text-gray-700 hover:bg-gray-200'}`}
               >
                 <span className="line-clamp-2 leading-snug">{label}</span>
                 <span className={`text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium
@@ -134,7 +152,7 @@ export default function LearnPage() {
       </div>
 
       {/* Right: lesson list */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
           <span className="w-1 h-5 bg-indigo-500 rounded-full inline-block" />
           {selectedLabel}
