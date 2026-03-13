@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { PenSquare, BarChart2 } from 'lucide-react'
+import { PenSquare, BarChart2, BookOpen, FileText } from 'lucide-react'
 
 export default function StudentDashboard() {
   const { profile } = useAuth()
@@ -12,14 +12,32 @@ export default function StudentDashboard() {
       </h1>
       <p className="text-gray-500 mb-8">Lớp {profile?.grade} — Hôm nay ôn bài gì nhỉ?</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-xl">
+      <div className="grid grid-cols-2 gap-4 max-w-xl">
         <Link
-          to="/student/practice"
+          to="/student/learn"
           className="flex flex-col items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl p-8 transition shadow"
         >
-          <PenSquare size={36} />
+          <BookOpen size={36} />
+          <span className="text-lg font-semibold">Học tập</span>
+          <span className="text-indigo-200 text-sm text-center">Xem bài học theo chủ đề</span>
+        </Link>
+
+        <Link
+          to="/student/exams"
+          className="flex flex-col items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 rounded-2xl p-8 transition shadow border border-gray-200"
+        >
+          <FileText size={36} className="text-indigo-600" />
+          <span className="text-lg font-semibold">Đề thi</span>
+          <span className="text-gray-400 text-sm text-center">Làm bài kiểm tra</span>
+        </Link>
+
+        <Link
+          to="/student/practice"
+          className="flex flex-col items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 rounded-2xl p-8 transition shadow border border-gray-200"
+        >
+          <PenSquare size={36} className="text-indigo-600" />
           <span className="text-lg font-semibold">Luyện tập</span>
-          <span className="text-indigo-200 text-sm text-center">Ôn bài theo chủ đề, tự chọn số câu</span>
+          <span className="text-gray-400 text-sm text-center">Ôn bài theo chủ đề, tự chọn số câu</span>
         </Link>
 
         <Link
