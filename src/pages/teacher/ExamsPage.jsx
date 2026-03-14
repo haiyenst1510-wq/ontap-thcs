@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useGrades } from '../../hooks/useGrades'
+import { useSubjects } from '../../hooks/useSubjects'
 import toast from 'react-hot-toast'
 import {
   Plus, Pencil, Trash2, BarChart2, Clock, X, Loader2, Check,
@@ -11,13 +12,15 @@ const DIFFICULTY_LABELS = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' }
 const TYPE_LABELS = { multiple_choice: 'Trắc nghiệm', true_false: 'Đúng/Sai', fill_blank: 'Điền từ', matching: 'Nối đôi', ordering: 'Sắp xếp', drag_word: 'Kéo thả từ' }
 
 /* ── ExamFormModal ─────────────────────────────────────────── */
-function ExamFormModal({ exam, onClose, onDone }) {
+function ExamFormModal({ exam, onClose, onDone, defaultSubjectId }) {
   const { grades: GRADES } = useGrades()
+  const { subjects } = useSubjects()
   const isEdit = !!exam
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     title: exam?.title || '',
     grade: exam?.grade || '3',
+    subject_id: exam?.subject_id || defaultSubjectId || '',
     class_names: exam?.class_names || [],
     time_limit: exam?.time_limit ?? 30,
     max_attempts: exam?.max_attempts ?? 1,
@@ -46,13 +49,15 @@ function ExamFormModal({ exam, onClose, onDone }) {
     let q = supabase.from('questions').select('id, question, type, difficulty, topic').eq('grade', form.grade)
     if (filterTopic) q = q.eq('topic', filterTopic)
     if (filterDiff) q = q.eq('difficulty', filterDiff)
+    if (form.subject_id) q = q.eq('subject_id', form.subject_id)
     q.order('created_at', { ascending: false }).then(({ data }) => {
       setQuestions(data || [])
       setLoadingQ(false)
     })
-    supabase.from('topics').select('name').or(`grade.eq.${form.grade},grade.eq.all`).order('name')
-      .then(({ data }) => setTopics(data?.map(t => t.name) || []))
-  }, [step, form.grade, filterTopic, filterDiff])
+    let topicsQ = supabase.from('topics').select('name').or(`grade.eq.${form.grade},grade.eq.all`).order('name')
+    if (form.subject_id) topicsQ = topicsQ.eq('subject_id', form.subject_id)
+    topicsQ.then(({ data }) => setTopics(data?.map(t => t.name) || []))
+  }, [step, form.grade, form.subject_id, filterTopic, filterDiff])
 
   function toggleQuestion(id) {
     setForm(f => ({
@@ -80,6 +85,7 @@ function ExamFormModal({ exam, onClose, onDone }) {
     const payload = {
       title: form.title.trim(),
       grade: form.grade,
+      subject_id: form.subject_id || null,
       class_names: form.class_names.length > 0 ? form.class_names : null,
       time_limit: form.time_limit || null,
       max_attempts: form.max_attempts,
@@ -128,13 +134,24 @@ function ExamFormModal({ exam, onClose, onDone }) {
                   placeholder="Ví dụ: Kiểm tra giữa kỳ Tin học khối 3" autoFocus />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Khối</label>
-                <select value={form.grade}
-                  onChange={e => setForm({ ...form, grade: e.target.value, class_names: [] })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  {GRADES.map(g => <option key={g} value={g}>Khối {g}</option>)}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Môn học</label>
+                  <select value={form.subject_id}
+                    onChange={e => setForm({ ...form, subject_id: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">-- Không chọn --</option>
+                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Khối</label>
+                  <select value={form.grade}
+                    onChange={e => setForm({ ...form, grade: e.target.value, class_names: [] })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {GRADES.map(g => <option key={g} value={g}>Khối {g}</option>)}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -424,16 +441,27 @@ function ExamResultsModal({ exam, onClose }) {
 /* ── ExamsPage ────────────────────────────────────────────── */
 export default function ExamsPage() {
   const navigate = useNavigate()
+  const { subjects } = useSubjects()
+  const [filterSubject, setFilterSubject] = useState('')
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editExam, setEditExam] = useState(null)
 
-  useEffect(() => { fetchExams() }, [])
+  // Set default subject filter when subjects load
+  useEffect(() => {
+    if (subjects.length > 0 && !filterSubject) {
+      setFilterSubject(subjects[0].id)
+    }
+  }, [subjects])
+
+  useEffect(() => { fetchExams() }, [filterSubject])
 
   async function fetchExams() {
     setLoading(true)
-    const { data } = await supabase.from('exams').select('*').order('created_at', { ascending: false })
+    let query = supabase.from('exams').select('*').order('created_at', { ascending: false })
+    if (filterSubject) query = query.eq('subject_id', filterSubject)
+    const { data } = await query
     setExams(data || [])
     setLoading(false)
   }
@@ -460,6 +488,20 @@ export default function ExamsPage() {
           <Plus size={16} /> Tạo đề thi
         </button>
       </div>
+
+      {/* Subject filter */}
+      {subjects.length > 0 && (
+        <div className="flex gap-3 mb-6 flex-wrap">
+          <select
+            value={filterSubject}
+            onChange={e => setFilterSubject(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Tất cả môn</option>
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -512,6 +554,7 @@ export default function ExamsPage() {
       {(showCreate || editExam) && (
         <ExamFormModal
           exam={editExam}
+          defaultSubjectId={filterSubject}
           onClose={() => { setShowCreate(false); setEditExam(null) }}
           onDone={() => { setShowCreate(false); setEditExam(null); fetchExams() }}
         />

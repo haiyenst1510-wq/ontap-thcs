@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTopics } from '../../hooks/useTopics'
 import { useGrades } from '../../hooks/useGrades'
+import { useSubjects } from '../../hooks/useSubjects'
 import QuestionImportModal from '../../components/teacher/QuestionImportModal'
 import QuestionCard from '../../components/teacher/QuestionCard'
 import QuestionFormModal from '../../components/teacher/QuestionFormModal'
@@ -11,20 +12,30 @@ import { Upload, Plus } from 'lucide-react'
 export default function QuestionsPage() {
   const { topics } = useTopics()
   const { grades: GRADES } = useGrades()
+  const { subjects } = useSubjects()
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showImport, setShowImport] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [filterGrade, setFilterGrade] = useState('')
   const [filterTopic, setFilterTopic] = useState('')
+  const [filterSubject, setFilterSubject] = useState('')
 
-  useEffect(() => { fetchQuestions() }, [filterGrade, filterTopic])
+  // Set default subject filter when subjects load
+  useEffect(() => {
+    if (subjects.length > 0 && !filterSubject) {
+      setFilterSubject(subjects[0].id)
+    }
+  }, [subjects])
+
+  useEffect(() => { fetchQuestions() }, [filterGrade, filterTopic, filterSubject])
 
   async function fetchQuestions() {
     setLoading(true)
     let query = supabase.from('questions').select('*').order('created_at', { ascending: false })
     if (filterGrade) query = query.eq('grade', filterGrade)
     if (filterTopic) query = query.eq('topic', filterTopic)
+    if (filterSubject) query = query.eq('subject_id', filterSubject)
     const { data, error } = await query
     if (error) toast.error('Lỗi tải câu hỏi')
     else setQuestions(data || [])
@@ -60,7 +71,17 @@ export default function QuestionsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-6 flex-wrap">
+        {subjects.length > 0 && (
+          <select
+            value={filterSubject}
+            onChange={e => setFilterSubject(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Tất cả môn</option>
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        )}
         <select
           value={filterGrade}
           onChange={e => setFilterGrade(e.target.value)}
@@ -100,6 +121,7 @@ export default function QuestionsPage() {
 
       {showCreate && (
         <QuestionFormModal
+          defaultSubjectId={filterSubject}
           onClose={() => setShowCreate(false)}
           onDone={() => { setShowCreate(false); fetchQuestions() }}
         />

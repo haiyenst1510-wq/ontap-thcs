@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { BookOpen } from 'lucide-react'
@@ -7,21 +7,17 @@ import { BookOpen } from 'lucide-react'
 export default function LoginPage() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ username: '', password: '' })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     try {
-      // Nếu không có @ thì là học sinh → tự thêm @school.local
-      const email = form.username.includes('@')
-        ? form.username
-        : `${form.username}@school.local`
-      await signIn(email, form.password)
+      await signIn(form.email, form.password)
       navigate('/')
     } catch (err) {
-      toast.error(err.message || 'Tên đăng nhập hoặc mật khẩu không đúng')
+      toast.error(err.message || 'Email hoặc mật khẩu không đúng')
     } finally {
       setLoading(false)
     }
@@ -34,21 +30,21 @@ export default function LoginPage() {
           <div className="bg-indigo-600 text-white rounded-full p-3 mb-3">
             <BookOpen size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Ôn Tập Tin Học</h1>
-          <p className="text-gray-500 text-sm mt-1">Tiểu học khối 3, 4, 5</p>
+          <h1 className="text-2xl font-bold text-gray-800">Ôn Tập</h1>
+          <p className="text-gray-500 text-sm mt-1">Nền tảng học tập trực tuyến</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tên đăng nhập</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
-              type="text"
+              type="email"
               required
-              value={form.username}
-              onChange={e => setForm({ ...form, username: e.target.value })}
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Học sinh: tên đăng nhập · Giáo viên: email"
-              autoComplete="username"
+              placeholder="email@example.com"
+              autoComplete="email"
             />
           </div>
           <div>
@@ -70,6 +66,13 @@ export default function LoginPage() {
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Chưa có tài khoản?{' '}
+          <Link to="/register" className="text-indigo-600 hover:underline font-medium">
+            Đăng ký ngay
+          </Link>
+        </p>
       </div>
     </div>
   )

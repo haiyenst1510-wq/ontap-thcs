@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useGrades } from '../../hooks/useGrades'
 import { useTopics } from '../../hooks/useTopics'
+import { useSubjects } from '../../hooks/useSubjects'
 import toast from 'react-hot-toast'
 import {
   Plus, Pencil, Trash2, FileText, X, Loader2, Check,
@@ -16,14 +17,16 @@ const TYPE_LABELS = {
 }
 
 /* ── LessonFormModal ───────────────────────────────────────── */
-function LessonFormModal({ lesson, onClose, onDone }) {
+function LessonFormModal({ lesson, onClose, onDone, defaultSubjectId }) {
   const { grades: GRADES } = useGrades()
   const { topics: ALL_TOPICS } = useTopics()
+  const { subjects } = useSubjects()
   const isEdit = !!lesson
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     title: lesson?.title || '',
     grade: lesson?.grade || (GRADES[0] || '3'),
+    subject_id: lesson?.subject_id || defaultSubjectId || '',
     topic: lesson?.topic || '',
     description: lesson?.description || '',
     video_url: lesson?.video_url || '',
@@ -47,7 +50,8 @@ function LessonFormModal({ lesson, onClose, onDone }) {
   }, [GRADES])
 
   const filteredTopics = ALL_TOPICS.filter(
-    t => !form.grade || t.grade === form.grade || t.grade === 'all'
+    t => (!form.grade || t.grade === form.grade || t.grade === 'all') &&
+         (!form.subject_id || t.subject_id === form.subject_id)
   )
 
   useEffect(() => {
@@ -56,11 +60,12 @@ function LessonFormModal({ lesson, onClose, onDone }) {
     let q = supabase.from('questions').select('id, question, type, difficulty, topic').eq('grade', form.grade)
     if (filterTopic) q = q.eq('topic', filterTopic)
     if (filterDiff) q = q.eq('difficulty', filterDiff)
+    if (form.subject_id) q = q.eq('subject_id', form.subject_id)
     q.order('created_at', { ascending: false }).then(({ data }) => {
       setQuestions(data || [])
       setLoadingQ(false)
     })
-  }, [step, form.grade, filterTopic, filterDiff])
+  }, [step, form.grade, form.subject_id, filterTopic, filterDiff])
 
   function toggleQuestion(id) {
     setForm(f => ({
@@ -87,6 +92,7 @@ function LessonFormModal({ lesson, onClose, onDone }) {
     const payload = {
       title: form.title.trim(),
       grade: form.grade,
+      subject_id: form.subject_id || null,
       topic: form.topic || null,
       description: form.description.trim() || null,
       video_url: form.video_url.trim() || null,
@@ -141,6 +147,17 @@ function LessonFormModal({ lesson, onClose, onDone }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Môn học</label>
+                  <select
+                    value={form.subject_id}
+                    onChange={e => setForm({ ...form, subject_id: e.target.value, topic: '' })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">-- Không chọn --</option>
+                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Khối</label>
                   <select
                     value={form.grade}
@@ -150,17 +167,18 @@ function LessonFormModal({ lesson, onClose, onDone }) {
                     {GRADES.map(g => <option key={g} value={g}>Khối {g}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Chủ đề</label>
-                  <select
-                    value={form.topic}
-                    onChange={e => setForm({ ...form, topic: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">-- Không chọn --</option>
-                    {filteredTopics.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                  </select>
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chủ đề</label>
+                <select
+                  value={form.topic}
+                  onChange={e => setForm({ ...form, topic: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">-- Không chọn --</option>
+                  {filteredTopics.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                </select>
               </div>
 
               <div>
@@ -321,6 +339,8 @@ export default function LessonsPage() {
   const navigate = useNavigate()
   const { grades: GRADES } = useGrades()
   const { topics: ALL_TOPICS } = useTopics()
+  const { subjects } = useSubjects()
+  const [selectedSubject, setSelectedSubject] = useState(null)
   const [lessons, setLessons] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedGrade, setSelectedGrade] = useState('')
@@ -330,7 +350,16 @@ export default function LessonsPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const touchStartX = { current: 0 }
 
-  useEffect(() => { fetchLessons() }, [])
+  // Set default subject when subjects load
+  useEffect(() => {
+    if (subjects.length > 0 && !selectedSubject) {
+      setSelectedSubject(subjects[0])
+    }
+  }, [subjects])
+
+  useEffect(() => {
+    fetchLessons()
+  }, [selectedSubject])
 
   useEffect(() => {
     if (GRADES.length > 0 && !selectedGrade) setSelectedGrade(GRADES[0])
@@ -338,14 +367,19 @@ export default function LessonsPage() {
 
   async function fetchLessons() {
     setLoading(true)
-    const { data } = await supabase.from('lessons').select('*').order('order', { ascending: true }).order('created_at', { ascending: false })
+    let query = supabase.from('lessons').select('*').order('order', { ascending: true }).order('created_at', { ascending: false })
+    if (selectedSubject) query = query.eq('subject_id', selectedSubject.id)
+    const { data } = await query
     setLessons(data || [])
     setLoading(false)
   }
 
-  // Topics & lessons for selected grade
+  // Topics & lessons for selected grade, filtered by subject
   const gradeLessons = lessons.filter(l => !selectedGrade || l.grade === selectedGrade)
-  const topicsForGrade = ALL_TOPICS.filter(t => !selectedGrade || t.grade === selectedGrade || t.grade === 'all')
+  const topicsForGrade = ALL_TOPICS.filter(t =>
+    (!selectedGrade || t.grade === selectedGrade || t.grade === 'all') &&
+    (!selectedSubject || t.subject_id === selectedSubject.id)
+  )
 
   const topicList = topicsForGrade.map(t => t.name)
   gradeLessons.forEach(l => {
@@ -353,10 +387,10 @@ export default function LessonsPage() {
     if (!topicList.includes(key)) topicList.push(key)
   })
 
-  // Auto-select first topic when grade/data changes
+  // Auto-select first topic when grade/data/subject changes
   useEffect(() => {
     setSelectedTopic(topicList[0] || null)
-  }, [selectedGrade, loading])
+  }, [selectedGrade, selectedSubject, loading])
 
   const grouped = {}
   gradeLessons.forEach(l => {
@@ -383,9 +417,24 @@ export default function LessonsPage() {
   function SidebarContent() {
     return (
       <>
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-2">
-          <h1 className="text-base font-bold text-gray-800">Bài học</h1>
-          <div className="flex items-center gap-2">
+        <div className="p-4 border-b border-gray-200 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-base font-bold text-gray-800">Bài học</h1>
+            <button
+              className="md:hidden text-gray-400 hover:text-gray-600 p-1"
+              onClick={() => setMobileSidebarOpen(false)}
+            >✕</button>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {subjects.length > 0 && (
+              <select
+                value={selectedSubject?.id || ''}
+                onChange={e => setSelectedSubject(subjects.find(s => s.id === e.target.value) || null)}
+                className="flex-1 min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
             <select
               value={selectedGrade}
               onChange={e => setSelectedGrade(e.target.value)}
@@ -393,10 +442,6 @@ export default function LessonsPage() {
             >
               {GRADES.map(g => <option key={g} value={g}>Khối {g}</option>)}
             </select>
-            <button
-              className="md:hidden text-gray-400 hover:text-gray-600 p-1"
-              onClick={() => setMobileSidebarOpen(false)}
-            >✕</button>
           </div>
         </div>
         <div className="p-2 space-y-1 overflow-y-auto flex-1">
@@ -548,6 +593,7 @@ export default function LessonsPage() {
       {(showCreate || editLesson) && (
         <LessonFormModal
           lesson={editLesson}
+          defaultSubjectId={selectedSubject?.id || ''}
           onClose={() => { setShowCreate(false); setEditLesson(null) }}
           onDone={() => { setShowCreate(false); setEditLesson(null); fetchLessons() }}
         />

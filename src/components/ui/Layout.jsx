@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { BookOpen, LogOut, LayoutDashboard, PenSquare, ClipboardList, BarChart2, Tags, GraduationCap, School, Users, Menu, X, TableProperties, BookMarked } from 'lucide-react'
+import {
+  BookOpen, LogOut, LayoutDashboard, PenSquare, ClipboardList,
+  BarChart2, Tags, GraduationCap, Menu, X, TableProperties,
+  BookMarked, Layers,
+} from 'lucide-react'
 
 export default function Layout({ children }) {
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const isTeacher = profile?.role === 'teacher'
+  const isStudent = profile?.role === 'student'
+  const isAdmin = profile?.role === 'admin'
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   async function handleSignOut() {
@@ -15,26 +20,27 @@ export default function Layout({ children }) {
     navigate('/login')
   }
 
-  const navItems = isTeacher
-    ? [
-        { to: '/teacher', icon: <LayoutDashboard size={18} />, label: 'Tổng quan' },
-        { to: '/teacher/questions', icon: <PenSquare size={18} />, label: 'Câu hỏi' },
-        { to: '/teacher/topics', icon: <Tags size={18} />, label: 'Chủ đề' },
-        { to: '/teacher/exams', icon: <ClipboardList size={18} />, label: 'Đề thi' },
-        { to: '/teacher/exam-stats', icon: <TableProperties size={18} />, label: 'Thống kê' },
-        { to: '/teacher/lessons', icon: <BookMarked size={18} />, label: 'Bài học' },
-        null,
-        { to: '/teacher/grades', icon: <GraduationCap size={18} />, label: 'Khối' },
-        { to: '/teacher/classes', icon: <School size={18} />, label: 'Lớp' },
-        { to: '/teacher/students', icon: <Users size={18} />, label: 'Học sinh' },
-      ]
-    : [
-        { to: '/student', icon: <LayoutDashboard size={18} />, label: 'Trang chủ' },
-        { to: '/student/learn', icon: <BookMarked size={18} />, label: 'Học tập' },
-        { to: '/student/exams', icon: <ClipboardList size={18} />, label: 'Đề thi' },
-        { to: '/student/practice', icon: <PenSquare size={18} />, label: 'Luyện tập' },
-        { to: '/student/history', icon: <BarChart2 size={18} />, label: 'Kết quả' },
-      ]
+  const teacherItems = [
+    { to: '/teacher', icon: <LayoutDashboard size={18} />, label: 'Tổng quan' },
+    { to: '/teacher/questions', icon: <PenSquare size={18} />, label: 'Câu hỏi' },
+    { to: '/teacher/topics', icon: <Tags size={18} />, label: 'Chủ đề' },
+    { to: '/teacher/exams', icon: <ClipboardList size={18} />, label: 'Đề thi' },
+    { to: '/teacher/exam-stats', icon: <TableProperties size={18} />, label: 'Thống kê' },
+    { to: '/teacher/lessons', icon: <BookMarked size={18} />, label: 'Bài học' },
+    null,
+    { to: '/teacher/grades', icon: <GraduationCap size={18} />, label: 'Khối' },
+    ...(isAdmin ? [{ to: '/admin/subjects', icon: <Layers size={18} />, label: 'Môn học' }] : []),
+  ]
+
+  const studentItems = [
+    { to: '/student', icon: <LayoutDashboard size={18} />, label: 'Trang chủ' },
+    { to: '/student/learn', icon: <BookMarked size={18} />, label: 'Học tập' },
+    { to: '/student/exams', icon: <ClipboardList size={18} />, label: 'Đề thi' },
+    { to: '/student/practice', icon: <PenSquare size={18} />, label: 'Luyện tập' },
+    { to: '/student/history', icon: <BarChart2 size={18} />, label: 'Kết quả' },
+  ]
+
+  const navItems = isStudent ? studentItems : teacherItems
 
   function NavLinks({ onLinkClick }) {
     return (
@@ -62,12 +68,13 @@ export default function Layout({ children }) {
   }
 
   function UserFooter() {
+    const roleLabel = profile?.role === 'admin' ? 'Quản trị viên'
+      : profile?.role === 'teacher' ? 'Giáo viên'
+      : `Học sinh khối ${profile?.grade}`
     return (
       <div className="px-3 py-4 border-t border-indigo-600">
         <div className="text-xs text-indigo-300 mb-1 px-3">{profile?.full_name}</div>
-        <div className="text-xs text-indigo-400 mb-3 px-3">
-          {isTeacher ? 'Giáo viên' : `Học sinh lớp ${profile?.grade}`}
-        </div>
+        <div className="text-xs text-indigo-400 mb-3 px-3">{roleLabel}</div>
         <button
           onClick={handleSignOut}
           className="flex items-center gap-2 px-3 py-2 text-sm text-indigo-200 hover:text-white hover:bg-indigo-600 rounded-lg w-full transition"
@@ -84,7 +91,7 @@ export default function Layout({ children }) {
       <header className="md:hidden bg-indigo-700 text-white flex items-center justify-between px-4 py-3 shrink-0">
         <div className="flex items-center gap-2">
           <BookOpen size={20} />
-          <span className="font-bold">Ôn Tập Tin</span>
+          <span className="font-bold">Ôn Tập</span>
         </div>
         <button onClick={() => setSidebarOpen(true)} className="text-indigo-200 hover:text-white p-1">
           <Menu size={22} />
@@ -95,7 +102,7 @@ export default function Layout({ children }) {
       <aside className="hidden md:flex w-56 bg-indigo-700 text-white flex-col shrink-0">
         <div className="flex items-center gap-2 px-5 py-5 border-b border-indigo-600">
           <BookOpen size={22} />
-          <span className="font-bold text-lg">Ôn Tập Tin</span>
+          <span className="font-bold text-lg">Ôn Tập</span>
         </div>
         <NavLinks />
         <UserFooter />
@@ -108,7 +115,7 @@ export default function Layout({ children }) {
             <div className="flex items-center justify-between px-5 py-5 border-b border-indigo-600">
               <div className="flex items-center gap-2">
                 <BookOpen size={22} />
-                <span className="font-bold text-lg">Ôn Tập Tin</span>
+                <span className="font-bold text-lg">Ôn Tập</span>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-indigo-200 hover:text-white">
                 <X size={20} />

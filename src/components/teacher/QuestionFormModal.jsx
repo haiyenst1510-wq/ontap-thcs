@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTopics } from '../../hooks/useTopics'
+import { useSubjects } from '../../hooks/useSubjects'
 import toast from 'react-hot-toast'
 import { X, Plus, Trash2, Loader2, Image } from 'lucide-react'
 
@@ -51,12 +52,14 @@ export function ImageUpload({ value, onChange, compact = false }) {
   )
 }
 
-export default function QuestionFormModal({ onClose, onDone }) {
+export default function QuestionFormModal({ onClose, onDone, defaultSubjectId }) {
   const { topics } = useTopics()
+  const { subjects } = useSubjects()
   const [form, setForm] = useState({
     type: 'multiple_choice',
     question: '',
     grade: '3',
+    subject_id: defaultSubjectId || '',
     topic: '',
     difficulty: 'easy',
     image_url: '',
@@ -77,7 +80,10 @@ export default function QuestionFormModal({ onClose, onDone }) {
   })
   const [saving, setSaving] = useState(false)
 
-  const topicOptions = topics.filter(t => t.grade === form.grade || t.grade === 'all')
+  const topicOptions = topics.filter(t =>
+    (t.grade === form.grade || t.grade === 'all') &&
+    (!form.subject_id || t.subject_id === form.subject_id)
+  )
   const blankCount = (form.question.match(/___/g) || []).length
 
   function buildPayload() {
@@ -135,6 +141,7 @@ export default function QuestionFormModal({ onClose, onDone }) {
       type: form.type,
       question: form.question.trim(),
       grade: form.grade,
+      subject_id: form.subject_id || null,
       topic: form.topic || null,
       difficulty: form.difficulty,
       image_url: form.image_url || null,
@@ -199,15 +206,36 @@ export default function QuestionFormModal({ onClose, onDone }) {
             </div>
           </div>
 
-          {/* Grade / Topic / Difficulty */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Khối</label>
-              <select value={form.grade} onChange={e => setForm({ ...form, grade: e.target.value, topic: '' })}
-                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                {['3','4','5'].map(g => <option key={g} value={g}>Khối {g}</option>)}
-              </select>
+          {/* Grade / Subject / Topic / Difficulty */}
+          {subjects.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Môn học</label>
+                <select value={form.subject_id} onChange={e => setForm({ ...form, subject_id: e.target.value, topic: '' })}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">-- Môn --</option>
+                  {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Khối</label>
+                <select value={form.grade} onChange={e => setForm({ ...form, grade: e.target.value, topic: '' })}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  {['3','4','5'].map(g => <option key={g} value={g}>Khối {g}</option>)}
+                </select>
+              </div>
             </div>
+          )}
+          <div className="grid grid-cols-3 gap-3">
+            {subjects.length === 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Khối</label>
+                <select value={form.grade} onChange={e => setForm({ ...form, grade: e.target.value, topic: '' })}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  {['3','4','5'].map(g => <option key={g} value={g}>Khối {g}</option>)}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Chủ đề</label>
               <select value={form.topic} onChange={e => setForm({ ...form, topic: e.target.value })}

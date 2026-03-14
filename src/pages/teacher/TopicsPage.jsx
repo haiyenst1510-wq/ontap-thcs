@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTopics } from '../../hooks/useTopics'
+import { useSubjects } from '../../hooks/useSubjects'
 import toast from 'react-hot-toast'
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 
@@ -13,25 +14,50 @@ const GRADES = [
 
 export default function TopicsPage() {
   const { topics, loading, refetch } = useTopics()
+  const { subjects } = useSubjects()
   const [filterGrade, setFilterGrade] = useState('all')
+  const [filterSubject, setFilterSubject] = useState('')
   const [newName, setNewName] = useState('')
   const [newGrade, setNewGrade] = useState('all')
+  const [newSubjectId, setNewSubjectId] = useState('')
   const [adding, setAdding] = useState(false)
   const [editId, setEditId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editGrade, setEditGrade] = useState('all')
+  const [editSubjectId, setEditSubjectId] = useState('')
 
-  const displayed = filterGrade === 'all' ? topics : topics.filter(t => t.grade === filterGrade)
+  // Set default subject filter when subjects load
+  useEffect(() => {
+    if (subjects.length > 0 && !filterSubject) {
+      setFilterSubject(subjects[0].id)
+    }
+  }, [subjects])
+
+  // Pre-fill new subject when filterSubject changes
+  useEffect(() => {
+    setNewSubjectId(filterSubject)
+  }, [filterSubject])
+
+  const displayed = topics.filter(t => {
+    const gradeOk = filterGrade === 'all' || t.grade === filterGrade
+    const subjectOk = !filterSubject || t.subject_id === filterSubject
+    return gradeOk && subjectOk
+  })
 
   async function handleAdd() {
     if (!newName.trim()) return
-    const { error } = await supabase.from('topics').insert({ name: newName.trim(), grade: newGrade })
+    const { error } = await supabase.from('topics').insert({
+      name: newName.trim(),
+      grade: newGrade,
+      subject_id: newSubjectId || null,
+    })
     if (error) {
       toast.error(error.message.includes('unique') ? 'Chủ đề đã tồn tại' : 'Thêm thất bại')
     } else {
       toast.success('Đã thêm chủ đề')
       setNewName('')
       setNewGrade('all')
+      setNewSubjectId(filterSubject)
       setAdding(false)
       refetch()
     }
@@ -39,7 +65,11 @@ export default function TopicsPage() {
 
   async function handleUpdate(id) {
     if (!editName.trim()) return
-    const { error } = await supabase.from('topics').update({ name: editName.trim(), grade: editGrade }).eq('id', id)
+    const { error } = await supabase.from('topics').update({
+      name: editName.trim(),
+      grade: editGrade,
+      subject_id: editSubjectId || null,
+    }).eq('id', id)
     if (error) toast.error('Cập nhật thất bại')
     else { toast.success('Đã cập nhật'); setEditId(null); refetch() }
   }
@@ -55,6 +85,7 @@ export default function TopicsPage() {
     setEditId(topic.id)
     setEditName(topic.name)
     setEditGrade(topic.grade)
+    setEditSubjectId(topic.subject_id || '')
   }
 
   return (
@@ -74,8 +105,21 @@ export default function TopicsPage() {
         )}
       </div>
 
-      {/* Grade filter tabs */}
-      <div className="flex gap-2 mb-5">
+      {/* Filters */}
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {/* Subject filter */}
+        {subjects.length > 0 && (
+          <select
+            value={filterSubject}
+            onChange={e => setFilterSubject(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Tất cả môn</option>
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        )}
+
+        {/* Grade filter tabs */}
         {GRADES.map(g => (
           <button
             key={g.value}
@@ -93,15 +137,25 @@ export default function TopicsPage() {
 
       {/* Add form */}
       {adding && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 flex items-center gap-3">
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 flex items-center gap-3 flex-wrap">
           <input
             autoFocus
             value={newName}
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
             placeholder="Tên chủ đề..."
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 min-w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
+          {subjects.length > 0 && (
+            <select
+              value={newSubjectId}
+              onChange={e => setNewSubjectId(e.target.value)}
+              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">-- Môn --</option>
+              {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
           <select
             value={newGrade}
             onChange={e => setNewGrade(e.target.value)}
@@ -136,6 +190,16 @@ export default function TopicsPage() {
                     onKeyDown={e => e.key === 'Enter' && handleUpdate(topic.id)}
                     className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
+                  {subjects.length > 0 && (
+                    <select
+                      value={editSubjectId}
+                      onChange={e => setEditSubjectId(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">-- Môn --</option>
+                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  )}
                   <select
                     value={editGrade}
                     onChange={e => setEditGrade(e.target.value)}
@@ -153,6 +217,11 @@ export default function TopicsPage() {
               ) : (
                 <>
                   <span className="flex-1 text-sm font-medium text-gray-800">{topic.name}</span>
+                  {topic.subject_id && (
+                    <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                      {subjects.find(s => s.id === topic.subject_id)?.name || 'Môn học'}
+                    </span>
+                  )}
                   <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                     {GRADES.find(g => g.value === topic.grade)?.label}
                   </span>
