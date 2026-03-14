@@ -55,6 +55,11 @@ function shuffle(arr) {
 // Mỗi loại câu hỏi có cách so sánh khác nhau
 function normalizeAnswer(type, ans, correct) {
   if (!ans) return false
+  if (type === 'word_order') {
+    // Học sinh lưu: "She,is,a,teacher" → nối lại thành "She is a teacher" rồi so sánh
+    const studentSentence = ans.split(',').map(w => w.trim()).join(' ')
+    return studentSentence.toLowerCase() === (correct || '').trim().toLowerCase()
+  }
   if (type === 'matching') {
     // Câu nối đôi: "A-1,B-2" và "B-2,A-1" đều đúng → sort trước khi so sánh
     const norm = s => s?.split(',').map(p => p.trim()).sort().join(',')
@@ -203,44 +208,58 @@ export default function QuizSession({
     : Object.keys(answers).length
 
   return (
-    <div className="flex min-h-screen justify-center">
-      <div className="flex flex-col md:flex-row w-full max-w-3xl">
+    <div className="flex h-screen overflow-hidden">
+      <div className="flex flex-col md:flex-row w-full">
 
         {/* ===== PHẦN CHÍNH: câu hỏi + đáp án ===== */}
-        <div className="flex-1 p-4 md:p-8">
-          {/* Dòng trạng thái: số câu + đồng hồ đếm ngược */}
-          <div className="flex items-center justify-between mb-5">
-            <span className="text-sm text-gray-500">
+        <div className="flex-1 overflow-y-auto p-4 md:p-10 bg-gray-50">
+          {/* Dòng trạng thái: số câu + đồng hồ lớn */}
+          <div className="flex items-start justify-between mb-4 max-w-3xl mx-auto gap-4">
+            <span className="text-sm text-gray-500 pt-1">
               Câu <span className="font-bold text-gray-800">{current + 1}</span> / {questions.length}
             </span>
             {timeLeft !== null && (
-              // Đổi màu đỏ khi còn < 60 giây
-              <div className={`flex items-center gap-1.5 text-sm font-medium ${timeLeft < 60 ? 'text-red-600' : 'text-gray-600'}`}>
-                <Clock size={16} />
-                {/* Định dạng mm:ss — padStart thêm số 0 phía trước nếu < 10 giây */}
-                {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+              // Khung đồng hồ lớn — đổi màu đỏ khi còn < 60 giây
+              <div className={`flex items-center gap-2 px-5 py-3 rounded-2xl border-2 shadow-sm
+                ${timeLeft < 60
+                  ? 'border-red-400 bg-red-50 text-red-600'
+                  : 'border-indigo-200 bg-white text-indigo-700'}`}>
+                <Clock size={20} />
+                {/* Hiển thị mm:ss cỡ lớn */}
+                <span className="text-3xl font-bold tabular-nums tracking-tight">
+                  {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+                </span>
               </div>
             )}
           </div>
 
           {/* Thanh tiến trình — chiều rộng tỉ lệ với số câu đã làm */}
-          <div className="h-1.5 bg-gray-200 rounded-full mb-7">
+          <div className="h-2 bg-gray-200 rounded-full mb-8 max-w-3xl mx-auto">
             <div
-              className="h-1.5 bg-indigo-600 rounded-full transition-all"
+              className="h-2 bg-indigo-600 rounded-full transition-all"
               style={{ width: `${(answeredCount / questions.length) * 100}%` }}
             />
           </div>
 
           {/* Nội dung câu hỏi */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-4">
-            {q.image_url && (
-              <img src={q.image_url} alt="" className="rounded-lg mb-4 max-h-48 w-auto" />
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 mb-5 max-w-3xl mx-auto shadow-sm">
+            {/* Phát audio nếu câu hỏi có đính kèm file âm thanh */}
+            {q.audio_url && (
+              <div className="mb-5">
+                <audio controls className="w-full rounded-xl" src={q.audio_url}>
+                  Trình duyệt không hỗ trợ phát âm thanh
+                </audio>
+              </div>
             )}
-            <p className="text-gray-800 font-medium text-base leading-relaxed">{q.question}</p>
+            {q.image_url && (
+              <img src={q.image_url} alt="" className="rounded-lg mb-5 max-h-64 w-auto" />
+            )}
+            {/* whitespace-pre-wrap: giữ nguyên xuống hàng khi giáo viên nhập nhiều dòng */}
+            <p className="text-gray-800 font-semibold text-lg leading-relaxed whitespace-pre-wrap">{q.question}</p>
           </div>
 
           {/* Khu vực đáp án — render theo loại câu hỏi */}
-          <div className="space-y-2.5 mb-6">
+          <div className="space-y-3 mb-6 max-w-3xl mx-auto">
             {/* Loại trắc nghiệm: render từng lựa chọn A, B, C, D */}
             {q.type === 'multiple_choice' && normalizeOptions(q.options).map(opt => (
               <OptionButton
@@ -311,12 +330,23 @@ export default function QuizSession({
                 disabled={confirmed && showAnswer}
               />
             )}
+
+            {/* Loại sắp xếp từ thành câu (thường dùng cho tiếng Anh) */}
+            {q.type === 'word_order' && (
+              <WordOrderQuestion
+                key={current}
+                q={q}
+                value={selected}
+                onChange={handleSelect}
+                disabled={confirmed && showAnswer}
+              />
+            )}
           </div>
 
           {/* Phản hồi đúng/sai (chỉ hiện sau khi xác nhận, khi showAnswer=true) */}
           {confirmed && showAnswer && (
-            <div className={`flex items-center gap-2 px-4 py-3 rounded-xl mb-4 text-sm font-medium
-              ${isCorrect ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            <div className={`flex items-center gap-2 px-5 py-4 rounded-xl mb-5 text-sm font-medium max-w-3xl mx-auto
+              ${isCorrect ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
               {isCorrect
                 ? <><CheckCircle size={18} /> Chính xác!</>
                 : <><XCircle size={18} /> Sai rồi! Đáp án đúng: <strong>{q.correct_answer}</strong></>
@@ -325,37 +355,39 @@ export default function QuizSession({
           )}
 
           {/* Nút hành động — thay đổi tùy trạng thái */}
-          {!showAnswer ? (
-            // Chế độ thi: không cần xác nhận, chọn xong → Tiếp theo
-            <button
-              onClick={handleNext}
-              disabled={!selected}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isLastQuestion ? 'Xem kết quả' : <><span>Câu tiếp theo</span><ChevronRight size={18} /></>}
-            </button>
-          ) : !confirmed ? (
-            // Chế độ luyện tập: phải xác nhận trước
-            <button
-              onClick={handleConfirm}
-              disabled={!selected}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50"
-            >
-              Xác nhận
-            </button>
-          ) : (
-            // Đã xác nhận → nút Tiếp theo / Xem kết quả
-            <button
-              onClick={handleNext}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
-            >
-              {isLastQuestion ? 'Xem kết quả' : 'Câu tiếp theo'} <ChevronRight size={18} />
-            </button>
-          )}
+          <div className="max-w-3xl mx-auto">
+            {!showAnswer ? (
+              // Chế độ thi: không cần xác nhận, chọn xong → Tiếp theo
+              <button
+                onClick={handleNext}
+                disabled={!selected}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2 text-base"
+              >
+                {isLastQuestion ? 'Xem kết quả' : <><span>Câu tiếp theo</span><ChevronRight size={18} /></>}
+              </button>
+            ) : !confirmed ? (
+              // Chế độ luyện tập: phải xác nhận trước
+              <button
+                onClick={handleConfirm}
+                disabled={!selected}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-xl transition disabled:opacity-50 text-base"
+              >
+                Xác nhận
+              </button>
+            ) : (
+              // Đã xác nhận → nút Tiếp theo / Xem kết quả
+              <button
+                onClick={handleNext}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-xl transition flex items-center justify-center gap-2 text-base"
+              >
+                {isLastQuestion ? 'Xem kết quả' : 'Câu tiếp theo'} <ChevronRight size={18} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ===== PANEL BÊN PHẢI: điều hướng câu ===== */}
-        <div className="md:w-60 shrink-0 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-4">
+        <div className="md:w-64 shrink-0 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-5 overflow-y-auto">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
             Danh sách câu
           </div>
@@ -420,7 +452,7 @@ export default function QuizSession({
 // ============================================================
 function OptionButton({ label, text, imageUrl, selected, confirmed, correct, onClick }) {
   // Xây dựng class CSS dựa vào trạng thái
-  let cls = 'flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 text-left text-sm font-medium transition '
+  let cls = 'flex items-center gap-4 w-full px-5 py-4 rounded-xl border-2 text-left text-base font-medium transition '
   if (confirmed && correct)             cls += 'bg-green-50 border-green-500 text-green-800'   // đáp án đúng
   else if (confirmed && selected && !correct) cls += 'bg-red-50 border-red-400 text-red-700'   // học sinh chọn sai
   else if (selected)                    cls += 'border-indigo-500 bg-indigo-50 text-indigo-800' // đang chọn
@@ -429,7 +461,7 @@ function OptionButton({ label, text, imageUrl, selected, confirmed, correct, onC
   return (
     <button onClick={onClick} disabled={confirmed} className={cls}>
       {/* Badge chữ cái A/B/C/D */}
-      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0
+      <span className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0
         ${confirmed && correct ? 'bg-green-500 text-white'
           : confirmed && selected ? 'bg-red-400 text-white'
           : selected ? 'bg-indigo-600 text-white'
@@ -625,87 +657,317 @@ function OrderingQuestion({ q, value, onChange, disabled }) {
 // Câu hỏi dùng "___" để đánh dấu chỗ trống
 // Ví dụ: "Hà Nội là ___ của Việt Nam"
 // Đáp án lưu dạng: "thủ đô" (thứ tự các từ điền vào)
+//
+// Hỗ trợ 2 cách tương tác:
+//   1. Kéo thả thật (HTML5 drag & drop) — dùng trên máy tính
+//   2. Bấm để chọn rồi bấm ô (click mode) — tiện hơn trên mobile
+//      Bấm từ → từ sáng lên (activeWord) → bấm ô bất kỳ để điền
 // ============================================================
 function DragWordQuestion({ q, value, onChange, disabled }) {
   // Tách câu thành các đoạn xung quanh chỗ trống
   const segments = q.question.split('___')
   const blankCount = segments.length - 1 // số chỗ trống = số ___
-  const wordBank = useMemo(() => shuffle(q.options || []), [q.id]) // ngân hàng từ (đã trộn)
+  const wordBank = useMemo(() => shuffle(q.options || []), [q.id])
 
-  // Mảng các từ đã điền vào từng chỗ trống: [null, 'thủ đô', null]
+  // Mảng các từ đã điền vào từng chỗ trống: ['thủ đô', null, 'Hà Nội']
   const [filled, setFilled] = useState(() => {
     if (value) return value.split(',').map(w => w.trim())
     return Array(blankCount).fill(null)
   })
 
-  const usedWords = new Set(filled.filter(Boolean)) // các từ đã được dùng
+  // Click mode: từ đang được chọn (sẽ điền vào ô tiếp theo bấm)
+  const [activeWord, setActiveWord] = useState(null)
 
-  // Điền từ vào chỗ trống đầu tiên còn trống
-  function placeWord(word) {
-    if (disabled) return
-    const idx = filled.findIndex(f => !f) // tìm ô trống đầu tiên
-    if (idx === -1) return // không còn ô trống
-    const newFilled = [...filled]
-    newFilled[idx] = word
-    setFilled(newFilled)
-    const ans = newFilled.filter(Boolean)
-    if (ans.length > 0) onChange(newFilled.map(w => w || '').join(','))
-  }
+  // Drag mode: {type: 'bank'|'blank', word, index?}
+  const [dragSrc, setDragSrc] = useState(null)
 
-  // Xóa từ tại vị trí idx (bấm vào chỗ trống đã điền)
-  function removeWord(idx) {
-    if (disabled) return
-    const newFilled = [...filled]
-    newFilled[idx] = null
+  const usedWords = new Set(filled.filter(Boolean))
+
+  // Lưu đáp án sau mỗi thay đổi
+  function commit(newFilled) {
     setFilled(newFilled)
     const hasAny = newFilled.some(Boolean)
     onChange(hasAny ? newFilled.map(w => w || '').join(',') : null)
   }
 
+  // ── CLICK MODE ──────────────────────────────────────────────
+  // Bấm một từ trong ngân hàng: chọn/bỏ chọn
+  function handleWordClick(word) {
+    if (disabled || usedWords.has(word)) return
+    setActiveWord(prev => prev === word ? null : word)
+  }
+
+  // Bấm một ô trống:
+  //   - Nếu đang có activeWord → điền từ đó vào ô này
+  //   - Nếu ô đã có từ và không có activeWord → lấy từ đó ra (trả về ngân hàng)
+  //   - Nếu đang có activeWord và ô đã có từ → hoán đổi
+  function handleBlankClick(idx) {
+    if (disabled) return
+    if (activeWord) {
+      const newFilled = [...filled]
+      // Nếu ô đang có từ khác → trả từ cũ về ngân hàng (chỉ cần xóa khỏi filled)
+      newFilled[idx] = activeWord
+      setActiveWord(null)
+      commit(newFilled)
+    } else if (filled[idx]) {
+      // Không có activeWord → lấy từ ra khỏi ô, đặt làm activeWord
+      const word = filled[idx]
+      const newFilled = [...filled]
+      newFilled[idx] = null
+      commit(newFilled)
+      setActiveWord(word)
+    }
+  }
+
+  // ── DRAG MODE ───────────────────────────────────────────────
+  function onDragStartBank(e, word) {
+    setDragSrc({ type: 'bank', word })
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function onDragStartBlank(e, idx) {
+    if (!filled[idx]) return
+    setDragSrc({ type: 'blank', word: filled[idx], index: idx })
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  // Drop vào một ô trống
+  function onDropBlank(e, idx) {
+    e.preventDefault()
+    if (!dragSrc) return
+    const newFilled = [...filled]
+    if (dragSrc.type === 'blank') {
+      // Hoán đổi: đưa từ kéo vào ô mới, đưa từ ô mới (nếu có) vào ô cũ
+      newFilled[idx] = dragSrc.word
+      newFilled[dragSrc.index] = filled[idx] || null
+    } else {
+      // Từ ngân hàng → điền vào ô (nếu ô đã có từ, từ cũ tự trở về ngân hàng)
+      newFilled[idx] = dragSrc.word
+    }
+    setDragSrc(null)
+    commit(newFilled)
+  }
+
+  // Drop vào vùng ngân hàng từ → trả từ về
+  function onDropBank(e) {
+    e.preventDefault()
+    if (!dragSrc || dragSrc.type === 'bank') return
+    const newFilled = [...filled]
+    newFilled[dragSrc.index] = null
+    setDragSrc(null)
+    commit(newFilled)
+  }
+
   return (
     <div className="space-y-4">
-      {/* Câu có chỗ trống — hiển thị từng đoạn xen kẽ với ô điền */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 text-base leading-relaxed text-gray-800">
+      {/* Câu có chỗ trống — whitespace-pre-wrap giữ nguyên xuống hàng giáo viên nhập */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 text-base leading-loose text-gray-800 whitespace-pre-wrap">
         {segments.map((seg, i) => (
           <span key={i}>
-            {seg}
+            <span>{seg}</span>
             {i < blankCount && (
-              // Ô điền từ — bấm để xóa từ đã điền
-              <button
-                onClick={() => removeWord(i)}
-                disabled={disabled || !filled[i]}
-                className={`inline-flex items-center mx-1 px-3 py-0.5 rounded-lg border-2 min-w-16 text-sm font-semibold transition ${
-                  filled[i]
-                    ? 'border-indigo-400 bg-indigo-50 text-indigo-800 hover:bg-red-50 hover:border-red-300 hover:text-red-600'
-                    : 'border-dashed border-gray-300 text-gray-300 cursor-default'
-                }`}
+              <span
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => onDropBlank(e, i)}
+                onClick={() => handleBlankClick(i)}
+                className={`inline-flex items-center mx-1 px-3 py-0.5 rounded-lg border-2 min-w-16 text-sm font-semibold transition cursor-pointer select-none
+                  ${filled[i]
+                    ? 'border-indigo-400 bg-indigo-50 text-indigo-800 hover:border-red-300 hover:bg-red-50'
+                    : activeWord
+                      ? 'border-dashed border-indigo-400 bg-indigo-50/60 text-indigo-300 animate-pulse'
+                      : 'border-dashed border-gray-300 text-gray-300'
+                  }`}
               >
-                {filled[i] || '___'}
-              </button>
+                {filled[i]
+                  ? <span draggable={!disabled} onDragStart={e => onDragStartBlank(e, i)} className="cursor-grab">{filled[i]}</span>
+                  : <span className="select-none text-gray-300">{'____'}</span>
+                }
+              </span>
             )}
           </span>
         ))}
       </div>
 
-      {/* Ngân hàng từ — bấm từ để điền vào ô trống */}
-      <div>
-        <p className="text-xs text-gray-400 mb-2">Bấm từ để điền vào chỗ trống · Bấm chỗ trống để xóa</p>
-        <div className="flex flex-wrap gap-2">
+      {/* Ngân hàng từ — drop zone để trả từ về */}
+      <div
+        onDragOver={e => e.preventDefault()}
+        onDrop={onDropBank}
+      >
+        <p className="text-xs text-gray-400 mb-2">
+          Kéo thả từ vào ô · hoặc bấm từ rồi bấm ô để điền · bấm ô đã điền để lấy lại
+        </p>
+        <div className="flex flex-wrap gap-2 min-h-12 p-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50">
+          {wordBank.map(opt => {
+            const isUsed = usedWords.has(opt.text)
+            const isActive = activeWord === opt.text
+            return (
+              <span
+                key={opt.key}
+                draggable={!disabled && !isUsed}
+                onDragStart={e => onDragStartBank(e, opt.text)}
+                onClick={() => handleWordClick(opt.text)}
+                className={`px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition select-none
+                  ${isUsed
+                    ? 'border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed opacity-40'
+                    : isActive
+                      ? 'border-indigo-500 bg-indigo-600 text-white cursor-pointer shadow-md scale-105'
+                      : 'border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50 cursor-grab'
+                  }`}
+              >
+                {opt.text}
+              </span>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// WordOrderQuestion — Sắp xếp từ thành câu hoàn chỉnh
+// Dùng cho bài tập tiếng Anh: các từ bị xáo trộn → học sinh ghép lại
+//
+// Dữ liệu:
+//   q.options        = [{key:"A", text:"She"}, {key:"B", text:"is"}, ...]
+//   q.correct_answer = "She is a teacher" (câu đúng, cách nhau bằng dấu cách)
+//
+// Đáp án học sinh lưu dạng: "She,is,a,teacher" (cách nhau bằng dấu phẩy)
+// Hỗ trợ kéo thả và bấm (click mode)
+// ============================================================
+function WordOrderQuestion({ q, value, onChange, disabled }) {
+  // Trộn ngẫu nhiên các từ trong ngân hàng khi component khởi tạo
+  const wordBank = useMemo(() => shuffle(normalizeOptions(q.options)), [q.id])
+
+  // Mảng các từ học sinh đã xếp theo thứ tự
+  const [ordered, setOrdered] = useState(() => {
+    if (value) return value.split(',').map(w => w.trim()).filter(Boolean)
+    return []
+  })
+
+  // Theo dõi nguồn đang kéo: {type: 'bank'|'ordered', word, index?}
+  const [dragSrc, setDragSrc] = useState(null)
+
+  // Tập từ đã dùng — để làm mờ từ đó trong ngân hàng
+  const usedWords = useMemo(() => new Set(ordered), [ordered])
+
+  // Lưu đáp án: nối các từ bằng dấu phẩy
+  function commit(newOrdered) {
+    setOrdered(newOrdered)
+    onChange(newOrdered.length > 0 ? newOrdered.join(',') : null)
+  }
+
+  // Bấm từ trong ngân hàng → thêm vào cuối câu
+  function handleBankClick(word) {
+    if (disabled || usedWords.has(word)) return
+    commit([...ordered, word])
+  }
+
+  // Bấm từ trong câu → xóa khỏi câu, trả về ngân hàng
+  function handleOrderedClick(idx) {
+    if (disabled) return
+    commit(ordered.filter((_, i) => i !== idx))
+  }
+
+  // Bắt đầu kéo từ ngân hàng
+  function onDragStartBank(e, word) {
+    setDragSrc({ type: 'bank', word })
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  // Bắt đầu kéo từ trong câu đã xếp
+  function onDragStartOrdered(e, idx) {
+    setDragSrc({ type: 'ordered', word: ordered[idx], index: idx })
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  // Thả vào vị trí cụ thể trong câu → chèn hoặc hoán đổi
+  function onDropAt(e, targetIdx) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!dragSrc) return
+    const newOrdered = [...ordered]
+    if (dragSrc.type === 'ordered') {
+      // Di chuyển trong câu: xóa vị trí cũ, chèn vào vị trí mới
+      newOrdered.splice(dragSrc.index, 1)
+      const insertIdx = dragSrc.index < targetIdx ? targetIdx - 1 : targetIdx
+      newOrdered.splice(insertIdx, 0, dragSrc.word)
+    } else {
+      // Từ ngân hàng: chèn vào trước vị trí target
+      newOrdered.splice(targetIdx, 0, dragSrc.word)
+    }
+    setDragSrc(null)
+    commit(newOrdered)
+  }
+
+  // Thả vào cuối khu vực câu
+  function onDropEnd(e) {
+    e.preventDefault()
+    if (!dragSrc || dragSrc.type === 'ordered') { setDragSrc(null); return }
+    commit([...ordered, dragSrc.word])
+    setDragSrc(null)
+  }
+
+  // Thả trả về ngân hàng → xóa khỏi câu
+  function onDropBank(e) {
+    e.preventDefault()
+    if (!dragSrc || dragSrc.type === 'bank') return
+    commit(ordered.filter((_, i) => i !== dragSrc.index))
+    setDragSrc(null)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Khu vực câu đã xếp — thả từ vào đây để ghép câu */}
+      <div
+        onDragOver={e => e.preventDefault()}
+        onDrop={onDropEnd}
+        className="bg-white rounded-2xl border-2 border-indigo-200 p-5 min-h-16 flex flex-wrap gap-2 items-center"
+      >
+        {ordered.length === 0 ? (
+          <span className="text-gray-300 text-sm select-none">Kéo hoặc bấm từ để ghép thành câu...</span>
+        ) : (
+          ordered.map((word, i) => (
+            <span
+              key={i}
+              draggable={!disabled}
+              onDragStart={e => onDragStartOrdered(e, i)}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => onDropAt(e, i)}
+              onClick={() => handleOrderedClick(i)}
+              className="px-3 py-1.5 rounded-lg border-2 border-indigo-400 bg-indigo-50 text-indigo-800 text-sm font-medium cursor-pointer select-none hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition"
+            >
+              {word}
+            </span>
+          ))
+        )}
+      </div>
+
+      {/* Ngân hàng từ — drop zone để trả từ về */}
+      <div
+        onDragOver={e => e.preventDefault()}
+        onDrop={onDropBank}
+      >
+        <p className="text-xs text-gray-400 mb-2">
+          Bấm từ để thêm vào câu · bấm từ đã xếp để xóa · kéo để chèn vào vị trí cụ thể
+        </p>
+        <div className="flex flex-wrap gap-2 min-h-12 p-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50">
           {wordBank.map(opt => {
             const isUsed = usedWords.has(opt.text)
             return (
-              <button
+              <span
                 key={opt.key}
-                onClick={() => !isUsed && placeWord(opt.text)}
-                disabled={disabled || isUsed}
-                className={`px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition ${
-                  isUsed
-                    ? 'border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed' // đã dùng → mờ
-                    : 'border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50 hover:border-indigo-500'
-                }`}
+                draggable={!disabled && !isUsed}
+                onDragStart={e => onDragStartBank(e, opt.text)}
+                onClick={() => handleBankClick(opt.text)}
+                className={`px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition select-none
+                  ${isUsed
+                    ? 'border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed opacity-40'
+                    : 'border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50 cursor-grab'
+                  }`}
               >
                 {opt.text}
-              </button>
+              </span>
             )
           })}
         </div>
