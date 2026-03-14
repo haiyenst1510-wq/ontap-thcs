@@ -54,7 +54,7 @@ export default function TeacherDashboard() {
   }
 
   async function fetchExamRanking() {
-    const { data } = await supabase.from('exam_sessions').select('user_id, score')
+    const { data } = await supabase.from('quiz_sessions').select('user_id, score')
     const ranked = await buildRanking(data)
     setExamRanking(ranked.sort((a, b) => b.avg - a.avg))
   }

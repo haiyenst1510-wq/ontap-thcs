@@ -21,7 +21,7 @@ export default function ExamResultsPage() {
     setLoading(true)
     const [{ data: examData }, { data: sessionData }] = await Promise.all([
       supabase.from('exams').select('*').eq('id', id).single(),
-      supabase.from('exam_sessions').select('*').eq('exam_id', id).order('submitted_at', { ascending: false }),
+      supabase.from('quiz_sessions').select('*').eq('exam_id', id).order('submitted_at', { ascending: false }),
     ])
     if (!examData) { navigate('/teacher/exams'); return }
 

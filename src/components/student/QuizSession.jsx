@@ -95,7 +95,7 @@ export default function QuizSession({
 
     try {
       if (examMode && examId) {
-        await supabase.from('exam_sessions').insert({
+        await supabase.from('quiz_sessions').insert({
           exam_id: examId,
           user_id: user.id,
           total: questions.length,

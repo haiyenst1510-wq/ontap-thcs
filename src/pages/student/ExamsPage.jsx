@@ -28,7 +28,7 @@ export default function StudentExamsPage() {
 
     if (examData?.length > 0) {
       const { data: sessionData } = await supabase
-        .from('exam_sessions')
+        .from('quiz_sessions')
         .select('exam_id')
         .eq('user_id', user.id)
         .in('exam_id', examData.map(e => e.id))

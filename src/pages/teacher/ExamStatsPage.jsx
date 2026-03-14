@@ -164,7 +164,7 @@ export default function ExamStatsPage() {
     const examIds = filteredExams.map(e => e.id)
     let sessionData = []
     if (examIds.length > 0) {
-      const { data } = await supabase.from('exam_sessions')
+      const { data } = await supabase.from('quiz_sessions')
         .select('id, user_id, exam_id, score, correct, total, attempt_number, submitted_at, answers')
         .in('exam_id', examIds)
       sessionData = data || []

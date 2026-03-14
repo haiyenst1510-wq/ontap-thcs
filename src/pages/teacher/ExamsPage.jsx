@@ -344,7 +344,7 @@ function ExamResultsModal({ exam, onClose }) {
   const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
-    supabase.from('exam_sessions')
+    supabase.from('quiz_sessions')
       .select('*, profiles(full_name, class_name)')
       .eq('exam_id', exam.id)
       .order('submitted_at', { ascending: false })
