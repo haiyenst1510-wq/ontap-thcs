@@ -21,6 +21,25 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { CheckCircle, XCircle, Clock, ChevronRight, RotateCcw, ArrowUp, ArrowDown } from 'lucide-react'
 
+// Chuẩn hóa mảng options về dạng [{key, text}]
+// Xử lý nhiều định dạng dữ liệu khác nhau trong database:
+//   - ["small", "big", ...]          → [{key:"A",text:"small"}, ...]
+//   - [{key:"A",text:"small"}, ...]  → giữ nguyên (đúng rồi)
+//   - [{"A":"small"}, ...]           → [{key:"A",text:"small"}, ...]
+function normalizeOptions(options) {
+  if (!Array.isArray(options)) return []
+  return options.map((opt, i) => {
+    const fallbackKey = String.fromCharCode(65 + i) // A, B, C, D, ...
+    if (typeof opt === 'string') return { key: fallbackKey, text: opt, image_url: '' }
+    if (!opt || typeof opt !== 'object') return { key: fallbackKey, text: String(opt ?? ''), image_url: '' }
+    if (opt.key !== undefined && opt.text !== undefined) return opt // định dạng đúng
+    // Thử lấy từ key đơn: {"A": "small"} → {key:"A", text:"small"}
+    const keys = Object.keys(opt)
+    if (keys.length >= 1 && keys[0].length === 1) return { key: keys[0], text: opt[keys[0]], image_url: opt.image_url || '' }
+    return { key: fallbackKey, text: opt.text || opt.value || opt.label || '', image_url: opt.image_url || '' }
+  })
+}
+
 // Hàm trộn ngẫu nhiên một mảng (thuật toán Fisher-Yates)
 // Dùng để trộn đáp án trắc nghiệm và từ kéo thả
 function shuffle(arr) {
@@ -223,7 +242,7 @@ export default function QuizSession({
           {/* Khu vực đáp án — render theo loại câu hỏi */}
           <div className="space-y-2.5 mb-6">
             {/* Loại trắc nghiệm: render từng lựa chọn A, B, C, D */}
-            {q.type === 'multiple_choice' && q.options?.map(opt => (
+            {q.type === 'multiple_choice' && normalizeOptions(q.options).map(opt => (
               <OptionButton
                 key={opt.key}
                 label={opt.key}
