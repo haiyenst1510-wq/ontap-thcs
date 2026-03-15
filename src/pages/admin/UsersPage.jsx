@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useGrades } from '../../hooks/useGrades'
-import { Search, Trash2, Shield, User, GraduationCap, ChevronDown, Pencil, KeyRound, ToggleLeft, ToggleRight, X, Check, Loader2 } from 'lucide-react'
+import { Search, Trash2, Shield, User, GraduationCap, ChevronDown, Pencil, KeyRound, ToggleLeft, ToggleRight, X, Check, Loader2, UserCheck, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const ROLE_COLORS = {
@@ -27,6 +27,7 @@ export default function UsersPage() {
   const [filterGrade, setFilterGrade] = useState('')
   const [editUser, setEditUser] = useState(null)
   const [resetUser, setResetUser] = useState(null)
+  const [showPending, setShowPending] = useState(false)
 
   useEffect(() => { fetchUsers() }, [])
 
@@ -36,6 +37,12 @@ export default function UsersPage() {
     if (error) toast.error('Lỗi tải danh sách')
     else setUsers(data || [])
     setLoading(false)
+  }
+
+  async function approveUser(u) {
+    const { error } = await supabase.from('profiles').update({ is_approved: true }).eq('id', u.id)
+    if (error) toast.error('Lỗi: ' + error.message)
+    else { toast.success(`Đã duyệt tài khoản ${u.full_name}`); fetchUsers() }
   }
 
   async function toggleActive(u) {
@@ -56,7 +63,9 @@ export default function UsersPage() {
     else { toast.success('Đã xóa tài khoản'); fetchUsers() }
   }
 
+  const pendingUsers = users.filter(u => u.is_approved === false)
   const filtered = users.filter(u => {
+    if (showPending) return u.is_approved === false
     const matchSearch = !search || u.full_name?.toLowerCase().includes(search.toLowerCase())
     const matchRole = !filterRole || u.role === filterRole
     const matchGrade = !filterGrade || u.grade === filterGrade
@@ -65,9 +74,27 @@ export default function UsersPage() {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Quản lý người dùng</h1>
-        <p className="text-gray-400 text-sm mt-0.5">{users.length} tài khoản</p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Quản lý người dùng</h1>
+          <p className="text-gray-400 text-sm mt-0.5">{users.length} tài khoản</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setShowPending(false)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${!showPending ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            Tất cả
+          </button>
+          <button onClick={() => setShowPending(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${showPending ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}>
+            <Clock size={14} />
+            Chờ duyệt
+            {pendingUsers.length > 0 && (
+              <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${showPending ? 'bg-white text-amber-600' : 'bg-amber-500 text-white'}`}>
+                {pendingUsers.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -134,15 +161,26 @@ export default function UsersPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{u.grade ? `Khối ${u.grade}` : <span className="text-gray-300">—</span>}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => toggleActive(u)} className="flex items-center gap-1.5 text-xs font-medium transition">
-                        {u.is_active
-                          ? <><ToggleRight size={18} className="text-green-500" /><span className="text-green-600">Hoạt động</span></>
-                          : <><ToggleLeft size={18} className="text-gray-400" /><span className="text-gray-400">Đã khóa</span></>}
-                      </button>
+                      {u.is_approved === false ? (
+                        <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+                          <Clock size={13} /> Chờ duyệt
+                        </span>
+                      ) : (
+                        <button onClick={() => toggleActive(u)} className="flex items-center gap-1.5 text-xs font-medium transition">
+                          {u.is_active
+                            ? <><ToggleRight size={18} className="text-green-500" /><span className="text-green-600">Hoạt động</span></>
+                            : <><ToggleLeft size={18} className="text-gray-400" /><span className="text-gray-400">Đã khóa</span></>}
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-400">{new Date(u.created_at).toLocaleDateString('vi-VN')}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        {u.is_approved === false && (
+                          <button onClick={() => approveUser(u)} className="p-1.5 text-amber-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Duyệt tài khoản">
+                            <UserCheck size={14} />
+                          </button>
+                        )}
                         <button onClick={() => setEditUser(u)} className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition" title="Chỉnh sửa">
                           <Pencil size={14} />
                         </button>
@@ -176,6 +214,11 @@ export default function UsersPage() {
                   </div>
                   {/* Action buttons */}
                   <div className="flex gap-1 shrink-0">
+                    {u.is_approved === false && (
+                      <button onClick={() => approveUser(u)} className="p-1.5 text-amber-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Duyệt">
+                        <UserCheck size={14} />
+                      </button>
+                    )}
                     <button onClick={() => setEditUser(u)} className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition">
                       <Pencil size={14} />
                     </button>

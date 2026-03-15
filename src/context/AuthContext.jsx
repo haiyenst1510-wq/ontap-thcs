@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
 
@@ -34,6 +35,14 @@ export function AuthProvider({ children }) {
       await supabase.auth.signOut()
       setProfile(null)
       setLoading(false)
+      return
+    }
+    // Chặn tài khoản chưa được admin duyệt (trừ admin)
+    if (data?.is_approved === false && data?.role !== 'admin') {
+      await supabase.auth.signOut()
+      setProfile(null)
+      setLoading(false)
+      toast.error('Tài khoản đang chờ admin duyệt. Vui lòng thử lại sau.')
       return
     }
     setProfile(data)
