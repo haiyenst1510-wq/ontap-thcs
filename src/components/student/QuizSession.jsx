@@ -94,7 +94,7 @@ export default function QuizSession({
 
   // useEffect chạy mỗi giây để đếm ngược
   useEffect(() => {
-    if (!timeLeft) return          // không có giới hạn thời gian
+    if (timeLeft === null) return   // không có giới hạn thời gian
     if (timeLeft <= 0) { handleFinish(); return } // hết giờ → tự nộp
     const t = setTimeout(() => setTimeLeft(tl => tl - 1), 1000) // giảm 1 giây
     return () => clearTimeout(t)   // cleanup: hủy timeout khi component unmount
