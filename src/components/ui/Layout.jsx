@@ -27,6 +27,7 @@ export default function Layout({ children }) {
     { to: '/teacher/exams', icon: <ClipboardList size={18} />, label: 'Đề thi' },
     { to: '/teacher/exam-stats', icon: <TableProperties size={18} />, label: 'Thống kê' },
     { to: '/teacher/lessons', icon: <BookMarked size={18} />, label: 'Bài học' },
+    
     ...(isAdmin ? [
       null,
       { to: '/teacher/grades', icon: <GraduationCap size={18} />, label: 'Khối' },
@@ -102,10 +103,10 @@ export default function Layout({ children }) {
       </header>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 bg-indigo-700 text-white flex-col shrink-0 h-screen sticky top-0">
+      <aside className="hidden md:flex w-56 bg-violet-700 text-white flex-col shrink-0 h-screen sticky top-0">
         <div className="flex items-center gap-2 px-5 py-5 border-b border-indigo-600">
           <BookOpen size={22} />
-          <span className="font-bold text-lg">Ôn Tập</span>
+          <span className="font-bold text-lg">Ôn Tập Tin học</span>
         </div>
         <NavLinks />
         <UserFooter />

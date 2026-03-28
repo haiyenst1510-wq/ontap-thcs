@@ -1,3 +1,10 @@
+
+Cách dùng khi tạo Supabase mới:
+
+Mở file → copy toàn bộ SQL trong khung code
+Vào Supabase → SQL Editor → New query → paste → Run
+Tạo tài khoản admin trong Authentication → Users → Add user
+Chạy thêm: UPDATE public.profiles SET role = 'admin', is_approved = true WHERE email = 'email-của-bạn';
 # Supabase Schema Đầy Đủ — THCS Learning Platform
 
 > Chạy toàn bộ SQL bên dưới trong **Supabase → SQL Editor → New query**.
