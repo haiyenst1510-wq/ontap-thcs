@@ -15,12 +15,7 @@ export default function StudentExamsPage() {
   const [loading, setLoading] = useState(true)
   const [activeExam, setActiveExam] = useState(null)
 
-  // Set default subject filter when subjects load
-  useEffect(() => {
-    if (subjects.length > 0 && !filterSubject) {
-      setFilterSubject(subjects[0].id)
-    }
-  }, [subjects])
+  // Không auto-chọn môn đầu tiên — mặc định hiện tất cả môn (filterSubject = '')
 
   useEffect(() => {
     if (profile && subjects.length > 0) loadExams()

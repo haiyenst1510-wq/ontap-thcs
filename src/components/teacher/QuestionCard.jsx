@@ -150,16 +150,51 @@ function QuestionEditModal({ question: q, onClose, onDone }) {
           )}
 
           {/* Fill blank answer */}
-          {q.type === 'fill_blank' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Đáp án</label>
-              <input
-                value={form.correct_answer}
-                onChange={e => setForm({ ...form, correct_answer: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          )}
+          {q.type === 'fill_blank' && (() => {
+            const blankCount = (form.question.match(/___/g) || []).length
+            if (blankCount === 0) {
+              return (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đáp án
+                    <span className="ml-2 text-xs font-normal text-gray-400">Dùng <code className="bg-gray-100 px-1 rounded">___</code> trong câu hỏi để tạo nhiều chỗ trống</span>
+                  </label>
+                  <input
+                    value={form.correct_answer}
+                    onChange={e => setForm({ ...form, correct_answer: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Nhập đáp án đúng"
+                  />
+                </div>
+              )
+            }
+            const answers = form.correct_answer ? form.correct_answer.split(',') : []
+            return (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Đáp án cho {blankCount} chỗ trống
+                </label>
+                <div className="space-y-2">
+                  {Array.from({ length: blankCount }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      <input
+                        value={answers[i] || ''}
+                        onChange={e => {
+                          const arr = form.correct_answer ? form.correct_answer.split(',') : []
+                          while (arr.length < blankCount) arr.push('')
+                          arr[i] = e.target.value
+                          setForm({ ...form, correct_answer: arr.join(',') })
+                        }}
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder={`Đáp án chỗ trống ${i + 1}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Grade, Topic, Difficulty */}
           <div className="grid grid-cols-3 gap-3">
@@ -170,9 +205,10 @@ function QuestionEditModal({ question: q, onClose, onDone }) {
                 onChange={e => setForm({ ...form, grade: e.target.value, topic: '' })}
                 className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="3">Khối 3</option>
-                <option value="4">Khối 4</option>
-                <option value="5">Khối 5</option>
+                <option value="6">Khối 6</option>
+                <option value="7">Khối 7</option>
+                <option value="8">Khối 8</option>
+                <option value="9">Khối 9</option>
               </select>
             </div>
             <div>

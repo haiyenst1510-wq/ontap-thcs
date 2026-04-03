@@ -139,9 +139,16 @@ export default function QuestionFormModal({ onClose, onDone, defaultSubjectId })
       case 'true_false':
         if (!form.correct_answer) { toast.error('Chọn đáp án đúng'); return null }
         return { correct_answer: form.correct_answer }
-      case 'fill_blank':
-        if (!form.correct_answer.trim()) { toast.error('Nhập đáp án'); return null }
-        return { correct_answer: form.correct_answer.trim() }
+      case 'fill_blank': {
+        if (blankCount === 0) {
+          if (!form.correct_answer.trim()) { toast.error('Nhập đáp án'); return null }
+          return { correct_answer: form.correct_answer.trim() }
+        }
+        const fbAnswers = form.correct_answer.split(',').map(a => a.trim()).slice(0, blankCount)
+        while (fbAnswers.length < blankCount) fbAnswers.push('')
+        if (fbAnswers.some(a => !a)) { toast.error(`Nhập đáp án cho tất cả ${blankCount} chỗ trống`); return null }
+        return { correct_answer: fbAnswers.join(',') }
+      }
       case 'matching': {
         const vp = form.pairs.filter(p => p.left.trim() && p.right.trim())
         if (vp.length < 2) { toast.error('Cần ít nhất 2 cặp'); return null }
@@ -250,7 +257,7 @@ export default function QuestionFormModal({ onClose, onDone, defaultSubjectId })
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nội dung câu hỏi
-              {form.type === 'drag_word' && (
+              {(form.type === 'drag_word' || form.type === 'fill_blank') && (
                 <span className="ml-2 text-xs font-normal text-gray-400">Dùng <code className="bg-gray-100 px-1 rounded">___</code> để đánh dấu chỗ trống</span>
               )}
             </label>
@@ -355,10 +362,44 @@ export default function QuestionFormModal({ onClose, onDone, defaultSubjectId })
           {/* Fill blank */}
           {form.type === 'fill_blank' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Đáp án</label>
-              <input value={form.correct_answer} onChange={e => setForm({ ...form, correct_answer: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Nhập đáp án đúng" />
+              {blankCount === 0 ? (
+                <>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đáp án
+                    <span className="ml-2 text-xs font-normal text-gray-400">Hoặc dùng <code className="bg-gray-100 px-1 rounded">___</code> trong câu hỏi để tạo nhiều chỗ trống</span>
+                  </label>
+                  <input value={form.correct_answer} onChange={e => setForm({ ...form, correct_answer: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Nhập đáp án đúng" />
+                </>
+              ) : (
+                <>
+                  <div className="bg-indigo-50 rounded-lg px-3 py-2 text-sm text-indigo-700 mb-2">
+                    Phát hiện <strong>{blankCount}</strong> chỗ trống — nhập đáp án cho từng chỗ
+                  </div>
+                  <div className="space-y-2">
+                    {Array.from({ length: blankCount }).map((_, i) => {
+                      const answers = form.correct_answer ? form.correct_answer.split(',') : []
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                          <input
+                            value={answers[i] || ''}
+                            onChange={e => {
+                              const arr = form.correct_answer ? form.correct_answer.split(',') : []
+                              while (arr.length < blankCount) arr.push('')
+                              arr[i] = e.target.value
+                              setForm({ ...form, correct_answer: arr.join(',') })
+                            }}
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder={`Đáp án chỗ trống ${i + 1}`}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

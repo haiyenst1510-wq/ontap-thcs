@@ -71,6 +71,15 @@ function normalizeAnswer(type, ans, correct) {
     const c = (correct || '').split(',').map(w => w.trim().toLowerCase())
     return a.length === c.length && a.every((w, i) => w === c[i])
   }
+  if (type === 'fill_blank') {
+    const correctParts = (correct || '').split(',').map(a => a.trim().toLowerCase())
+    if (correctParts.length <= 1) {
+      return ans.toLowerCase() === (correct || '').toLowerCase()
+    }
+    // Nhiều khoảng trống: so sánh từng phần
+    const ansParts = ans.split(',').map(a => a.trim().toLowerCase())
+    return ansParts.length === correctParts.length && ansParts.every((a, i) => a === correctParts[i])
+  }
   // Các loại còn lại: so sánh chuỗi (không phân biệt hoa thường)
   return ans.toLowerCase() === (correct || '').toLowerCase()
 }
@@ -287,16 +296,44 @@ export default function QuizSession({
               />
             ))}
 
-            {/* Loại điền từ: ô nhập văn bản tự do */}
-            {q.type === 'fill_blank' && (
-              <input
-                value={selected || ''}
-                onChange={e => handleSelect(e.target.value)}
-                disabled={confirmed && showAnswer}
-                placeholder="Nhập câu trả lời..."
-                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-indigo-500 disabled:bg-gray-50"
-              />
-            )}
+            {/* Loại điền từ: 1 ô hoặc nhiều ô tùy số ___ trong câu hỏi */}
+            {q.type === 'fill_blank' && (() => {
+              const blanks = (q.question.match(/___/g) || []).length
+              const isDisabled = confirmed && showAnswer
+              if (blanks === 0) {
+                return (
+                  <input
+                    value={selected || ''}
+                    onChange={e => handleSelect(e.target.value)}
+                    disabled={isDisabled}
+                    placeholder="Nhập câu trả lời..."
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-indigo-500 disabled:bg-gray-50"
+                  />
+                )
+              }
+              const answers = selected ? selected.split(',') : []
+              return (
+                <div className="space-y-3">
+                  {Array.from({ length: blanks }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      <input
+                        value={answers[i] || ''}
+                        onChange={e => {
+                          const arr = selected ? selected.split(',') : Array(blanks).fill('')
+                          while (arr.length < blanks) arr.push('')
+                          arr[i] = e.target.value
+                          handleSelect(arr.join(','))
+                        }}
+                        disabled={isDisabled}
+                        placeholder={`Chỗ trống ${i + 1}...`}
+                        className="flex-1 border-2 border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-indigo-500 disabled:bg-gray-50"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
 
             {/* Loại nối đôi */}
             {q.type === 'matching' && (
@@ -435,7 +472,13 @@ export default function QuizSession({
 
           {/* Nút nộp bài sớm */}
           <button
-            onClick={handleFinish}
+            onClick={() => {
+              const unanswered = questions.length - Object.keys(answers).length
+              const msg = unanswered > 0
+                ? `Còn ${unanswered} câu chưa trả lời. Bạn có chắc muốn nộp bài không?`
+                : 'Bạn có chắc muốn nộp bài không?'
+              if (window.confirm(msg)) handleFinish()
+            }}
             className="mt-5 w-full text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 rounded-lg transition border border-red-200"
           >
             Nộp bài
