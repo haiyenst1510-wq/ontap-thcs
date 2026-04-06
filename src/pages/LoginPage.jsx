@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
-import { BookOpen } from 'lucide-react'
+import { GraduationCap } from 'lucide-react'
 
 export default function LoginPage() {
   // signIn là hàm được lấy từ AuthContext — nơi lưu trạng thái đăng nhập
@@ -44,10 +44,10 @@ export default function LoginPage() {
         {/* Logo và tiêu đề */}
         <div className="flex flex-col items-center mb-8">
           <div className="bg-indigo-600 text-white rounded-full p-3 mb-3">
-            <BookOpen size={32} />
+            <GraduationCap size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Ôn Tập</h1>
-          <p className="text-gray-500 text-sm mt-1">Nền tảng học tập trực tuyến</p>
+          <h1 className="text-2xl font-bold text-gray-800">EduQuizMaster</h1>
+          <p className="text-gray-500 text-sm mt-1">Ứng dụng ôn tập trực tuyến dành cho học sinh THCS</p>
         </div>
 
         {/* Form: onSubmit gọi handleSubmit khi bấm nút hoặc Enter */}
