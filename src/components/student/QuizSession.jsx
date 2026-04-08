@@ -20,6 +20,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { CheckCircle, XCircle, Clock, ChevronRight, RotateCcw, ArrowUp, ArrowDown } from 'lucide-react'
+import { normalizeAnswer } from '../../utils/normalizeAnswer'
 
 // Chuẩn hóa mảng options về dạng [{key, text}]
 // Xử lý nhiều định dạng dữ liệu khác nhau trong database:
@@ -51,29 +52,6 @@ function shuffle(arr) {
   return a
 }
 
-// Kiểm tra đáp án học sinh có đúng không
-// Mỗi loại câu hỏi có cách so sánh khác nhau
-function normalizeAnswer(type, ans, correct) {
-  if (!ans) return false
-  if (type === 'word_order') {
-    // Học sinh lưu: "She,is,a,teacher" → nối lại thành "She is a teacher" rồi so sánh
-    const studentSentence = ans.split(',').map(w => w.trim()).join(' ')
-    return studentSentence.toLowerCase() === (correct || '').trim().toLowerCase()
-  }
-  if (type === 'matching') {
-    // Câu nối đôi: "A-1,B-2" và "B-2,A-1" đều đúng → sort trước khi so sánh
-    const norm = s => s?.split(',').map(p => p.trim()).sort().join(',')
-    return norm(ans) === norm(correct)
-  }
-  if (type === 'drag_word') {
-    // Kéo thả từ: thứ tự quan trọng, so sánh từng từ
-    const a = ans.split(',').map(w => w.trim().toLowerCase())
-    const c = (correct || '').split(',').map(w => w.trim().toLowerCase())
-    return a.length === c.length && a.every((w, i) => w === c[i])
-  }
-  // Các loại còn lại: so sánh chuỗi (không phân biệt hoa thường)
-  return ans.toLowerCase() === (correct || '').toLowerCase()
-}
 
 export default function QuizSession({
   questions, mode, timeLimit, onFinish,
@@ -287,16 +265,54 @@ export default function QuizSession({
               />
             ))}
 
-            {/* Loại điền từ: ô nhập văn bản tự do */}
-            {q.type === 'fill_blank' && (
-              <input
-                value={selected || ''}
-                onChange={e => handleSelect(e.target.value)}
-                disabled={confirmed && showAnswer}
-                placeholder="Nhập câu trả lời..."
-                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-indigo-500 disabled:bg-gray-50"
-              />
-            )}
+            {/* Loại điền từ: hỗ trợ nhiều chỗ trống */}
+            {q.type === 'fill_blank' && (() => {
+              const correctAnswers = (q.correct_answer || '').split(',')
+              const blanksCount = correctAnswers.length
+              const currentAnswers = selected ? selected.split(',') : Array(blanksCount).fill('')
+              if (blanksCount === 1) {
+                return (
+                  <input
+                    value={selected || ''}
+                    onChange={e => handleSelect(e.target.value)}
+                    disabled={confirmed && showAnswer}
+                    placeholder="Nhập câu trả lời..."
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-indigo-500 disabled:bg-gray-50"
+                  />
+                )
+              }
+              return (
+                <div className="space-y-2">
+                  {Array.from({ length: blanksCount }).map((_, i) => {
+                    const ans = currentAnswers[i] || ''
+                    const isCorrect = ans.trim().toLowerCase() === (correctAnswers[i] || '').trim().toLowerCase()
+                    return (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                        <input
+                          value={ans}
+                          onChange={e => {
+                            const newAnswers = [...currentAnswers]
+                            newAnswers[i] = e.target.value
+                            handleSelect(newAnswers.join(','))
+                          }}
+                          disabled={confirmed && showAnswer}
+                          placeholder={`Chỗ trống ${i + 1}`}
+                          className={`flex-1 border-2 rounded-xl px-4 py-2 text-base focus:outline-none disabled:bg-gray-50 ${
+                            confirmed && showAnswer
+                              ? isCorrect ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'
+                              : 'border-gray-300 focus:border-indigo-500'
+                          }`}
+                        />
+                        {confirmed && showAnswer && !isCorrect && (
+                          <span className="text-red-500 text-xs shrink-0">→ {correctAnswers[i]}</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
 
             {/* Loại nối đôi */}
             {q.type === 'matching' && (

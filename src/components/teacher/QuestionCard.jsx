@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useTopics } from '../../hooks/useTopics'
 import { ImageUpload } from './QuestionFormModal'
 import toast from 'react-hot-toast'
-import { Trash2, ChevronDown, ChevronUp, Pencil, X, Loader2 } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Pencil, X, Loader2, Plus } from 'lucide-react'
 
 const TYPE_LABELS = {
   multiple_choice: 'Trắc nghiệm',
@@ -22,7 +22,7 @@ function QuestionEditModal({ question: q, onClose, onDone }) {
   const [form, setForm] = useState({
     question: q.question || '',
     image_url: q.image_url || '',
-    grade: q.grade || '3',
+    grade: q.grade || '6',
     topic: q.topic || '',
     difficulty: q.difficulty || 'easy',
     correct_answer: q.correct_answer || '',
@@ -30,6 +30,7 @@ function QuestionEditModal({ question: q, onClose, onDone }) {
       { key: 'A', text: '', image_url: '' }, { key: 'B', text: '', image_url: '' },
       { key: 'C', text: '', image_url: '' }, { key: 'D', text: '', image_url: '' },
     ],
+    drag_answers: q.type === 'fill_blank' ? (q.correct_answer || '').split(',').map(w => w.trim()) : [''],
   })
   const [saving, setSaving] = useState(false)
 
@@ -48,6 +49,12 @@ function QuestionEditModal({ question: q, onClose, onDone }) {
     }
     if (q.type === 'multiple_choice') {
       payload.options = form.options
+    }
+    if (q.type === 'fill_blank') {
+      const blankCount = (form.question.match(/___/g) || []).length
+      const answers = form.drag_answers.slice(0, blankCount || 1).map(w => w.trim()).filter(Boolean)
+      if (answers.length === 0) { toast.error('Nhập đáp án cho chỗ trống'); setSaving(false); return }
+      payload.correct_answer = answers.join(',')
     }
     const { error } = await supabase.from('questions').update(payload).eq('id', q.id)
     setSaving(false)
@@ -150,16 +157,34 @@ function QuestionEditModal({ question: q, onClose, onDone }) {
           )}
 
           {/* Fill blank answer */}
-          {q.type === 'fill_blank' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Đáp án</label>
-              <input
-                value={form.correct_answer}
-                onChange={e => setForm({ ...form, correct_answer: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          )}
+          {q.type === 'fill_blank' && (() => {
+            const blankCount = (form.question.match(/___/g) || []).length || 1
+            return (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Đáp án đúng cho mỗi chỗ trống
+                  <span className="ml-2 text-xs font-normal text-gray-400">Dùng <code className="bg-gray-100 px-1 rounded">___</code> trong câu hỏi</span>
+                </label>
+                <div className="space-y-2">
+                  {Array.from({ length: blankCount }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      <input
+                        value={form.drag_answers[i] || ''}
+                        onChange={e => {
+                          const arr = [...form.drag_answers]
+                          arr[i] = e.target.value
+                          setForm({ ...form, drag_answers: arr })
+                        }}
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder={`Đáp án chỗ trống ${i + 1}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Grade, Topic, Difficulty */}
           <div className="grid grid-cols-3 gap-3">
@@ -170,9 +195,7 @@ function QuestionEditModal({ question: q, onClose, onDone }) {
                 onChange={e => setForm({ ...form, grade: e.target.value, topic: '' })}
                 className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="3">Khối 3</option>
-                <option value="4">Khối 4</option>
-                <option value="5">Khối 5</option>
+                {['6','7','8','9'].map(g => <option key={g} value={g}>Khối {g}</option>)}
               </select>
             </div>
             <div>
@@ -277,8 +300,17 @@ export default function QuestionCard({ question: q, index, onDelete, onUpdate })
             )}
 
             {q.type === 'fill_blank' && (
-              <div className="text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-lg inline-block">
-                Đáp án: <strong>{q.correct_answer}</strong>
+              <div className="text-sm text-gray-700 bg-gray-50 px-3 py-2 rounded-lg">
+                {q.question.split('___').map((seg, i, arr) => (
+                  <span key={i}>
+                    {seg}
+                    {i < arr.length - 1 && (
+                      <span className="inline-block bg-green-100 border border-green-300 text-green-700 text-xs font-bold px-2 py-0.5 rounded mx-1">
+                        {q.correct_answer?.split(',')[i]?.trim() || '___'}
+                      </span>
+                    )}
+                  </span>
+                ))}
               </div>
             )}
 

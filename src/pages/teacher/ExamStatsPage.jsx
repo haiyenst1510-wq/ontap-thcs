@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useGrades } from '../../hooks/useGrades'
 import { X, Loader2, Eye, ChevronRight } from 'lucide-react'
+import { normalizeAnswer } from '../../utils/normalizeAnswer'
 
 /* ── StudentDetailModal ─────────────────────────────────── */
 function StudentDetailModal({ student, exams, sessions, onClose }) {
@@ -53,7 +54,7 @@ function StudentDetailModal({ student, exams, sessions, onClose }) {
               </div>
               {detail.questions.map((q, i) => {
                 const ans = detail.session.answers?.[i]
-                const isOk = ans?.toLowerCase() === q.correct_answer?.toLowerCase()
+                const isOk = normalizeAnswer(q.type, ans, q.correct_answer)
                 return (
                   <div key={q.id} className={`rounded-xl border p-3 text-sm ${isOk ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
                     <p className="font-medium text-gray-800 mb-1">{i + 1}. {q.question}</p>
@@ -147,7 +148,7 @@ export default function ExamStatsPage() {
     setLoading(true)
     const [examRes, studentRes] = await Promise.all([
       supabase.from('exams').select('id, title, question_ids').eq('grade', filterGrade).order('created_at'),
-      supabase.from('profiles').select('id, full_name').eq('role', 'student').eq('grade', filterGrade).order('full_name'),
+      supabase.from('profiles').select('id, full_name, class_name').eq('role', 'student').eq('grade', filterGrade).order('full_name'),
     ])
 
     const examIds = (examRes.data || []).map(e => e.id)
