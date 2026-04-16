@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useTopics } from '../../hooks/useTopics'
 import { useSubjects } from '../../hooks/useSubjects'
 import toast from 'react-hot-toast'
-import { X, Plus, Trash2, Loader2, Image } from 'lucide-react'
+import { X, Plus, Trash2, Loader2, Image, Paperclip, FileText } from 'lucide-react'
 
 const TYPES = [
   { value: 'multiple_choice', label: 'Trắc nghiệm' },
@@ -48,6 +48,59 @@ export function ImageUpload({ value, onChange, compact = false }) {
       </label>
       {value && (
         <button type="button" onClick={() => onChange('')} className="text-xs text-red-400 hover:text-red-600">Xóa</button>
+      )}
+    </div>
+  )
+}
+
+// Component upload file đính kèm (PDF, Word, ZIP, ảnh...)
+// url: URL đã upload, name: tên file gốc, onChange({ url, name })
+export function FileUpload({ url, name, onChange }) {
+  const [uploading, setUploading] = useState(false)
+
+  async function handleFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 20 * 1024 * 1024) { toast.error('File tối đa 20MB'); return }
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('upload_preset', UPLOAD_PRESET)
+    try {
+      const isImage = file.type.startsWith('image/')
+      const endpoint = isImage
+        ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
+        : `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`
+      const res = await fetch(endpoint, { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok || json.error) { toast.error('Tải file lên thất bại'); return }
+      onChange({ url: json.secure_url, name: file.name })
+    } catch { toast.error('Tải file lên thất bại') }
+    finally { setUploading(false) }
+  }
+
+  const ext = name?.split('.').pop()?.toUpperCase() || 'FILE'
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border cursor-pointer transition ${uploading ? 'opacity-50 cursor-not-allowed' : 'border-gray-300 hover:bg-gray-50 text-gray-600'}`}>
+        <Paperclip size={12} />
+        {uploading ? 'Đang tải...' : url ? 'Đổi file' : 'Đính kèm file'}
+        <input
+          type="file"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,image/*"
+          onChange={handleFile}
+          disabled={uploading}
+          className="hidden"
+        />
+      </label>
+      {url && (
+        <div className="flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1.5 rounded-lg max-w-xs">
+          <FileText size={12} className="shrink-0" />
+          <span className="truncate">{name || 'File đính kèm'}</span>
+          <span className="text-indigo-400 shrink-0">[{ext}]</span>
+          <button type="button" onClick={() => onChange({ url: '', name: '' })} className="text-red-400 hover:text-red-600 ml-1 shrink-0">×</button>
+        </div>
       )}
     </div>
   )

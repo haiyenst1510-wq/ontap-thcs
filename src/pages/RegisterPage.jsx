@@ -88,7 +88,7 @@ export default function RegisterPage() {
           <div className="bg-indigo-600 text-white rounded-full p-3 mb-3">
             <BookOpen size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Ôn Tập THCS</h1>
+          <h1 className="text-2xl font-bold text-gray-800">EduQuizMaster</h1>
           <p className="text-gray-500 text-sm mt-1">Tạo tài khoản mới</p>
         </div>
 

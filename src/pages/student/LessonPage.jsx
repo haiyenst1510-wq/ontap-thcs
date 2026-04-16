@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { ArrowLeft, ArrowUp, ArrowDown, CheckCircle, PlayCircle, BookOpen, Upload, Loader2, Send } from 'lucide-react'
-import { ImageUpload } from '../../components/teacher/QuestionFormModal'
+import { ImageUpload, FileUpload } from '../../components/teacher/QuestionFormModal'
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5) }
 
@@ -407,6 +407,8 @@ export default function LessonPage() {
   // Practice form state
   const [practiceText, setPracticeText] = useState('')
   const [practiceFile, setPracticeFile] = useState('')
+  const [practiceDocUrl, setPracticeDocUrl] = useState('')
+  const [practiceDocName, setPracticeDocName] = useState('')
   const [practiceSubmitting, setPracticeSubmitting] = useState(false)
 
   // Comment save state
@@ -471,8 +473,8 @@ export default function LessonPage() {
   }
 
   async function handlePracticeSubmit() {
-    if (!practiceText.trim() && !practiceFile) {
-      toast.error('Vui lòng nhập mô tả hoặc tải ảnh lên')
+    if (!practiceText.trim() && !practiceFile && !practiceDocUrl) {
+      toast.error('Vui lòng nhập mô tả, tải ảnh hoặc đính kèm file')
       return
     }
     setPracticeSubmitting(true)
@@ -481,6 +483,8 @@ export default function LessonPage() {
       lesson_id: id,
       text_content: practiceText.trim() || null,
       file_url: practiceFile || null,
+      doc_url: practiceDocUrl || null,
+      doc_name: practiceDocName || null,
       submitted_at: new Date().toISOString(),
     }).select().single()
 
@@ -683,6 +687,17 @@ export default function LessonPage() {
                       className="rounded-lg max-h-60 object-contain border border-gray-200"
                     />
                   )}
+                  {submission.doc_url && (
+                    <a
+                      href={submission.doc_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                      {submission.doc_name || 'File đính kèm'}
+                    </a>
+                  )}
                   {submission.teacher_comment ? (
                     <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
                       <p className="text-xs font-semibold text-indigo-600 mb-1">Nhận xét của giáo viên:</p>
@@ -712,6 +727,14 @@ export default function LessonPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Ảnh chụp màn hình / Minh chứng</label>
                     <ImageUpload value={practiceFile} onChange={setPracticeFile} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">File đính kèm <span className="text-xs font-normal text-gray-400">(PDF, Word, ZIP... tối đa 20MB)</span></label>
+                    <FileUpload
+                      url={practiceDocUrl}
+                      name={practiceDocName}
+                      onChange={({ url, name }) => { setPracticeDocUrl(url); setPracticeDocName(name) }}
+                    />
                   </div>
                   <button
                     onClick={handlePracticeSubmit}
