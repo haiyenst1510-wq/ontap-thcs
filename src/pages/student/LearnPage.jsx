@@ -39,7 +39,7 @@ export default function LearnPage() {
 
   useEffect(() => {
     if (profile && user && selectedSubject) loadData()
-  }, [profile, user, selectedSubject])
+  }, [profile?.id, user?.id, selectedSubject])
 
   async function loadData() {
     setLoading(true)

@@ -414,7 +414,7 @@ export default function LessonPage() {
 
   useEffect(() => {
     if (user) loadAll()
-  }, [id, user])
+  }, [id, user?.id])
 
   async function loadAll() {
     setLoading(true)

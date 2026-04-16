@@ -19,7 +19,7 @@ export default function StudentExamsPage() {
 
   useEffect(() => {
     if (profile && subjects.length > 0) loadExams()
-  }, [profile, filterSubject, subjects])
+  }, [profile?.id, filterSubject, subjects])
 
   async function loadExams() {
     setLoading(true)

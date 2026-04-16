@@ -107,7 +107,8 @@ export default function QuestionImportModal({ onClose, onSaved, grades, topics }
   const [rawText, setRawText] = useState('')
   const [showGuide, setShowGuide] = useState(false)
   const [parsed, setParsed] = useState([])
-  const [meta, setMeta] = useState({ grade: grades[0], topic: topics[0], difficulty: 'easy' })
+  const firstTopic = topics.find(t => t.grade === grades[0])?.name || ''
+  const [meta, setMeta] = useState({ grade: grades[0], topic: firstTopic, difficulty: 'easy' })
   const [saving, setSaving] = useState(false)
 
   function handleParse() {
@@ -239,7 +240,11 @@ export default function QuestionImportModal({ onClose, onSaved, grades, topics }
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Khối</label>
-                  <select value={meta.grade} onChange={e => setMeta({ ...meta, grade: e.target.value })}
+                  <select value={meta.grade} onChange={e => {
+                    const g = e.target.value
+                    const first = topics.find(t => t.grade === g)?.name || ''
+                    setMeta({ ...meta, grade: g, topic: first })
+                  }}
                     className="w-full border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     {grades.map(g => <option key={g} value={g}>Khối {g}</option>)}
                   </select>
@@ -248,7 +253,7 @@ export default function QuestionImportModal({ onClose, onSaved, grades, topics }
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Chủ đề</label>
                   <select value={meta.topic} onChange={e => setMeta({ ...meta, topic: e.target.value })}
                     className="w-full border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    {topics.map(t => <option key={t} value={t}>{t}</option>)}
+                    {topics.filter(t => t.grade === meta.grade).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                   </select>
                 </div>
                 <div>

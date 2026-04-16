@@ -187,7 +187,7 @@ export default function QuestionsPage() {
           onClose={() => setShowImport(false)}
           onSaved={() => { setShowImport(false); fetchQuestions() }}
           grades={GRADES}
-          topics={topicNames}
+          topics={topics.filter(t => assignedSubjectIds.has(t.subject_id))}
         />
       )}
     </div>

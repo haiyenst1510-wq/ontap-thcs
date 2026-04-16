@@ -173,11 +173,14 @@ export default function QuizSession({
         await supabase.from('quiz_sessions').insert({
           exam_id: examId,
           user_id: user.id,
+          mode: 'exam',
           total: questions.length,
           correct,
           score,
           answers: finalAnswers,     // lưu toàn bộ đáp án dưới dạng JSON
+          question_ids: questions.map(q => q.id),
           attempt_number: attemptNumber,
+          submitted_at: new Date().toISOString(),
         })
       } else {
         // Lưu kết quả luyện tập (không gắn với đề thi nào)
