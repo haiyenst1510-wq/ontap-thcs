@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
-  BookOpen, LogOut, LayoutDashboard, PenSquare, ClipboardList,
-  BarChart2, Tags, GraduationCap, Menu, X, TableProperties,
+  GraduationCap, LogOut, LayoutDashboard, PenSquare, ClipboardList,
+  BarChart2, Tags, Menu, X, TableProperties,
   BookMarked, Layers, Users,
 } from 'lucide-react'
 
@@ -94,8 +94,8 @@ export default function Layout({ children }) {
       {/* Mobile top bar */}
       <header className="md:hidden bg-indigo-700 text-white flex items-center justify-between px-4 py-3 shrink-0">
         <div className="flex items-center gap-2">
-          <BookOpen size={20} />
-          <span className="font-bold">Ôn Tập</span>
+          <GraduationCap size={20} />
+          <span className="font-bold">EduQuizMaster</span>
         </div>
         <button onClick={() => setSidebarOpen(true)} className="text-indigo-200 hover:text-white p-1">
           <Menu size={22} />
@@ -105,8 +105,8 @@ export default function Layout({ children }) {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-56 bg-violet-700 text-white flex-col shrink-0 h-screen sticky top-0">
         <div className="flex items-center gap-2 px-5 py-5 border-b border-indigo-600">
-          <BookOpen size={22} />
-          <span className="font-bold text-lg">Ôn Tập Tin học</span>
+          <GraduationCap size={22} />
+          <span className="font-bold text-lg">EduQuizMaster</span>
         </div>
         <NavLinks />
         <UserFooter />
@@ -118,8 +118,8 @@ export default function Layout({ children }) {
           <aside className="w-64 bg-indigo-700 text-white flex flex-col h-full">
             <div className="flex items-center justify-between px-5 py-5 border-b border-indigo-600">
               <div className="flex items-center gap-2">
-                <BookOpen size={22} />
-                <span className="font-bold text-lg">Ôn Tập</span>
+                <GraduationCap size={22} />
+                <span className="font-bold text-lg">EduQuizMaster</span>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-indigo-200 hover:text-white">
                 <X size={20} />

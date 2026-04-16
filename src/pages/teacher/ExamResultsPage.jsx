@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { normalizeAnswer } from '../../utils/normalizeAnswer'
 
 export default function ExamResultsPage() {
   const { id } = useParams()
@@ -109,14 +110,17 @@ export default function ExamResultsPage() {
             )}
           </div>
 
-          {selectedSession && (
+          {(() => {
+            const activeSession = selectedSession || (selectedStudent.sessions.length === 1 ? selectedStudent.sessions[0] : null)
+            if (!activeSession) return null
+            return (
             <div className="p-5 space-y-3">
               {/* Session summary */}
               <div className="flex flex-wrap gap-4 text-sm text-gray-600 pb-3 border-b border-gray-100">
-                <span>Điểm: <strong className="text-indigo-700 text-base">{selectedSession.score}</strong></span>
-                <span>{selectedSession.correct}/{selectedSession.total} câu đúng</span>
+                <span>Điểm: <strong className="text-indigo-700 text-base">{activeSession.score}</strong></span>
+                <span>{activeSession.correct}/{activeSession.total} câu đúng</span>
                 <span className="text-gray-400">
-                  {new Date(selectedSession.submitted_at).toLocaleDateString('vi-VN', {
+                  {new Date(activeSession.submitted_at).toLocaleDateString('vi-VN', {
                     day: '2-digit', month: '2-digit', year: 'numeric',
                     hour: '2-digit', minute: '2-digit',
                   })}
@@ -125,8 +129,8 @@ export default function ExamResultsPage() {
 
               {/* Question breakdown */}
               {questions.map((q, i) => {
-                const ans = selectedSession.answers?.[i]
-                const isOk = ans?.toLowerCase() === q.correct_answer?.toLowerCase()
+                const ans = activeSession.answers?.[i]
+                const isOk = normalizeAnswer(q.type, ans, q.correct_answer)
                 return (
                   <div
                     key={q.id}
@@ -146,7 +150,8 @@ export default function ExamResultsPage() {
                 )
               })}
             </div>
-          )}
+            )
+          })()}
         </div>
       ) : (
         /* ── Student list ── */
