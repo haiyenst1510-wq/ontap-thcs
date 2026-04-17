@@ -42,7 +42,7 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
         {/* Logo và tiêu đề */}
         <div className="flex flex-col items-center mb-8">
-          <img src="/icon.png" alt="logo" className="w-16 h-16 mb-3" />
+          <img src="/icon.png" alt="logo" className="w-16 h-16 mb-3 rounded-xl" />
           <h1 className="text-2xl font-bold text-gray-800">EduQuizMaster</h1>
           <p className="text-gray-500 text-sm mt-1">Ứng dụng ôn tập trực tuyến dành cho học sinh THCS</p>
         </div>
