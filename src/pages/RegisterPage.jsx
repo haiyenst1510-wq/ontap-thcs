@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
-import { BookOpen } from 'lucide-react'
 
 const GRADES = ['6', '7', '8', '9']
 
@@ -85,9 +84,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-indigo-600 text-white rounded-full p-3 mb-3">
-            <BookOpen size={32} />
-          </div>
+          <img src="/icon.png" alt="logo" className="w-16 h-16 mb-3" />
           <h1 className="text-2xl font-bold text-gray-800">EduQuizMaster</h1>
           <p className="text-gray-500 text-sm mt-1">Tạo tài khoản mới</p>
         </div>

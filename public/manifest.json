@@ -1,0 +1,21 @@
+{
+  "name": "EduQuizMaster",
+  "short_name": "EduQuizMaster",
+  "description": "Ứng dụng ôn tập trực tuyến dành cho học sinh THCS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6d28d9",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
