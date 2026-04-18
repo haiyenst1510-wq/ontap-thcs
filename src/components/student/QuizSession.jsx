@@ -607,6 +607,14 @@ function OptionButton({ label, text, imageUrl, selected, confirmed, correct, onC
 // Học sinh bấm cột trái rồi bấm cột phải để tạo cặp
 // Đáp án lưu dạng chuỗi: "A-1,B-3,C-2"
 // ============================================================
+const PAIR_COLORS = [
+  { cls: 'border-blue-400 bg-blue-50 text-blue-800',   label: 'text-blue-600' },
+  { cls: 'border-purple-400 bg-purple-50 text-purple-800', label: 'text-purple-600' },
+  { cls: 'border-amber-400 bg-amber-50 text-amber-800',  label: 'text-amber-600' },
+  { cls: 'border-rose-400 bg-rose-50 text-rose-800',    label: 'text-rose-600' },
+  { cls: 'border-teal-400 bg-teal-50 text-teal-800',   label: 'text-teal-600' },
+]
+
 function MatchingQuestion({ q, value, onChange, disabled }) {
   // useMemo: tính toán 1 lần rồi cache lại, không tính lại mỗi lần render
   const rightShuffled = useMemo(() => shuffle(q.match_options || []), [q.id])
@@ -658,9 +666,10 @@ function MatchingQuestion({ q, value, onChange, disabled }) {
       <div className="flex gap-3">
         {/* Cột trái */}
         <div className="flex-1 space-y-2">
-          {q.options?.map(opt => {
+          {q.options?.map((opt, idx) => {
             const matched = pairs[opt.key]
             const isActive = activeLeft === opt.key
+            const color = PAIR_COLORS[idx % PAIR_COLORS.length]
             return (
               <div key={opt.key} className="flex items-center gap-1">
                 <button
@@ -668,7 +677,7 @@ function MatchingQuestion({ q, value, onChange, disabled }) {
                   disabled={disabled}
                   className={`flex-1 text-left px-3 py-2 rounded-lg border-2 text-sm transition ${
                     isActive ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
-                    : matched ? 'border-green-400 bg-green-50 text-green-800'
+                    : matched ? color.cls
                     : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-indigo-300'
                   }`}
                 >
@@ -693,19 +702,21 @@ function MatchingQuestion({ q, value, onChange, disabled }) {
           {rightShuffled.map(opt => {
             const isUsed = usedRight.has(opt.key)
             const pairedLeft = Object.entries(pairs).find(([, r]) => r === opt.key)?.[0]
+            const leftIdx = pairedLeft ? (q.options?.findIndex(o => o.key === pairedLeft) ?? 0) : 0
+            const color = PAIR_COLORS[leftIdx % PAIR_COLORS.length]
             return (
               <button
                 key={opt.key}
                 onClick={() => handleRightClick(opt.key)}
                 disabled={disabled || (isUsed && !activeLeft)}
                 className={`w-full text-left px-3 py-2 rounded-lg border-2 text-sm transition ${
-                  isUsed ? 'border-green-400 bg-green-50 text-green-800'
+                  isUsed && pairedLeft ? color.cls
                   : activeLeft ? 'border-indigo-300 bg-white text-gray-700 hover:border-indigo-500 hover:bg-indigo-50'
                   : 'border-gray-200 bg-gray-50 text-gray-500'
                 }`}
               >
                 {opt.image_url && <img src={opt.image_url} alt="" className="h-12 w-auto mb-1 rounded" />}
-                {isUsed && <span className="font-bold mr-1 text-green-600">{pairedLeft}-</span>}
+                {isUsed && pairedLeft && <span className={`font-bold mr-1 ${color.label}`}>{pairedLeft}-</span>}
                 {opt.text}
               </button>
             )
@@ -1107,13 +1118,15 @@ function WordOrderQuestion({ q, value, onChange, disabled }) {
 // Hiện điểm số, số câu đúng, và chi tiết từng câu
 // ============================================================
 function QuizResult({ questions, answers, onRetry, examMode = false, showScore = true }) {
-  // Tính lại điểm (giống handleFinish)
+  // Tính lại điểm (essay không tính tự động)
   let correct = 0
+  const autoQs = questions.filter(q => q.type !== 'essay')
   questions.forEach((q, i) => {
+    if (q.type === 'essay') return
     if (normalizeAnswer(q.type, answers[i], q.correct_answer)) correct++
   })
-  const score = Math.round((correct / questions.length) * 10 * 10) / 10
-  const percent = Math.round((correct / questions.length) * 100)
+  const score = autoQs.length > 0 ? Math.round((correct / autoQs.length) * 10 * 10) / 10 : 0
+  const percent = autoQs.length > 0 ? Math.round((correct / autoQs.length) * 100) : 0
 
   // Nếu GV tắt show_score → chỉ hiện "Đã nộp bài"
   if (!showScore) {
@@ -1154,18 +1167,28 @@ function QuizResult({ questions, answers, onRetry, examMode = false, showScore =
       <div className="space-y-3 mb-6">
         {questions.map((q, i) => {
           const ans = answers[i]
+          const isEssay = q.type === 'essay'
           const isOk = normalizeAnswer(q.type, ans, q.correct_answer)
+          const ansText = typeof ans === 'object' ? (ans?.text || '') : (ans || '')
           return (
-            <div key={i} className={`rounded-xl border p-4 text-sm ${isOk ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+            <div key={i} className={`rounded-xl border p-4 text-sm ${
+              isEssay ? 'border-amber-200 bg-amber-50'
+              : isOk ? 'border-green-200 bg-green-50'
+              : 'border-red-200 bg-red-50'
+            }`}>
               <div className="flex items-start gap-2">
-                {isOk
-                  ? <CheckCircle size={16} className="text-green-600 mt-0.5 shrink-0" />
-                  : <XCircle size={16} className="text-red-500 mt-0.5 shrink-0" />}
+                {isEssay
+                  ? <span className="text-amber-500 mt-0.5 shrink-0 text-base">📝</span>
+                  : isOk
+                    ? <CheckCircle size={16} className="text-green-600 mt-0.5 shrink-0" />
+                    : <XCircle size={16} className="text-red-500 mt-0.5 shrink-0" />}
                 <div>
                   <p className="font-medium text-gray-800">{q.question}</p>
-                  {!isOk && (
+                  {isEssay ? (
+                    <p className="text-amber-600 mt-1 text-xs">⏳ Giáo viên sẽ chấm điểm sau</p>
+                  ) : !isOk && (
                     <p className="text-red-600 mt-1">
-                      Bạn chọn: <strong>{ans || '(chưa trả lời)'}</strong> — Đáp án đúng: <strong>{q.correct_answer}</strong>
+                      Bạn chọn: <strong>{ansText || '(chưa trả lời)'}</strong> — Đáp án đúng: <strong>{q.correct_answer}</strong>
                     </p>
                   )}
                 </div>
