@@ -112,10 +112,12 @@ create table if not exists public.exams (
   subject_id   uuid references public.subjects(id) on delete set null,
   time_limit   integer default 30,
   max_attempts integer default 1,
-  is_active    boolean not null default false,
-  show_answer  boolean not null default true,
-  show_score   boolean not null default true,
-  question_ids uuid[] not null default '{}',
+  is_active         boolean not null default false,
+  show_answer       boolean not null default true,
+  show_score        boolean not null default true,
+  shuffle_questions boolean not null default false,
+  shuffle_options   boolean not null default false,
+  question_ids      uuid[] not null default '{}',
   created_at   timestamptz not null default now()
 );
 
