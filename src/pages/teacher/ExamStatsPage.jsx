@@ -513,17 +513,18 @@ function GradingTab() {
     const current = essayGrades[sessionId] || {}
     const updated = { ...current, [qIndex]: { score, comment } }
 
-    // Tính lại điểm tổng: mỗi câu có trọng số bằng nhau
-    // auto_correct câu + essay đóng góp (grade/10 mỗi câu)
+    // Điểm = điểm TN + tổng điểm tự luận (cộng trực tiếp)
     const session = sessions.find(s => s.id === sessionId)
     let newScore = session?.score ?? 0
     if (session && questions.length > 0) {
+      const autoQsCount = questions.filter(q => q.type !== 'essay').length
+      const tnScore = autoQsCount > 0 ? (session.correct / autoQsCount) * 10 : 0
       const essayIndices = questions.map((q, i) => q.type === 'essay' ? i : -1).filter(i => i >= 0)
       const essaySum = essayIndices.reduce((acc, idx) => {
         const g = updated[idx]
-        return acc + (g ? Number(g.score) / 10 : 0)
+        return acc + (g ? Number(g.score) : 0)
       }, 0)
-      newScore = Math.round((session.correct + essaySum) / questions.length * 10 * 10) / 10
+      newScore = Math.round((tnScore + essaySum) * 10) / 10
     }
 
     const { error } = await supabase.from('quiz_sessions')
