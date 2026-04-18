@@ -65,7 +65,11 @@ export default function PracticePage() {
     }
 
     const shuffled = data.sort(() => Math.random() - 0.5).slice(0, config.count)
-    setQuestions(shuffled)
+    const withShuffledOptions = shuffled.map(q => {
+      if (q.type !== 'multiple_choice' || !q.options) return q
+      return { ...q, options: [...q.options].sort(() => Math.random() - 0.5) }
+    })
+    setQuestions(withShuffledOptions)
     setLoading(false)
   }
 

@@ -54,7 +54,16 @@ export default function StudentExamsPage() {
     if (!exam.question_ids?.length) { toast.error('Đề thi chưa có câu hỏi'); return }
     const { data, error } = await supabase.from('questions').select('*').in('id', exam.question_ids)
     if (error || !data?.length) { toast.error('Không tải được câu hỏi'); return }
-    const ordered = exam.question_ids.map(id => data.find(q => q.id === id)).filter(Boolean)
+    let ordered = exam.question_ids.map(id => data.find(q => q.id === id)).filter(Boolean)
+    if (exam.shuffle_questions) {
+      ordered = [...ordered].sort(() => Math.random() - 0.5)
+    }
+    if (exam.shuffle_options) {
+      ordered = ordered.map(q => {
+        if (q.type !== 'multiple_choice' || !q.options) return q
+        return { ...q, options: [...q.options].sort(() => Math.random() - 0.5) }
+      })
+    }
     setActiveExam({ exam, questions: ordered })
   }
 

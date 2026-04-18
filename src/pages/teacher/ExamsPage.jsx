@@ -26,6 +26,8 @@ function ExamFormModal({ exam, onClose, onDone, defaultSubjectId }) {
     is_active: exam?.is_active ?? false,
     show_answer: exam?.show_answer ?? true,
     show_score: exam?.show_score ?? true,
+    shuffle_questions: exam?.shuffle_questions ?? false,
+    shuffle_options: exam?.shuffle_options ?? false,
     question_ids: exam?.question_ids || [],
   })
   const [questions, setQuestions] = useState([])
@@ -88,6 +90,8 @@ function ExamFormModal({ exam, onClose, onDone, defaultSubjectId }) {
       is_active: form.is_active,
       show_answer: form.show_answer,
       show_score: form.show_score,
+      shuffle_questions: form.shuffle_questions,
+      shuffle_options: form.shuffle_options,
       question_ids: form.question_ids,
     }
     const { error } = isEdit
@@ -177,6 +181,32 @@ function ExamFormModal({ exam, onClose, onDone, defaultSubjectId }) {
                   {form.is_active ? <span className="text-green-600 font-medium">Đang mở</span> : <span className="text-gray-500">Đang tắt</span>}
                   <span className="text-gray-400 text-xs ml-1">(học sinh {form.is_active ? 'thấy' : 'không thấy'})</span>
                 </span>
+              </div>
+
+              <div className="border-t border-gray-100 pt-3 space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Xáo trộn khi học sinh vào làm</p>
+                <div className="flex items-center gap-3">
+                  <button type="button"
+                    onClick={() => setForm({ ...form, shuffle_questions: !form.shuffle_questions })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition shrink-0 ${form.shuffle_questions ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${form.shuffle_questions ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                  <span className="text-sm text-gray-700">
+                    Xáo trộn thứ tự câu hỏi
+                    <span className="text-gray-400 text-xs ml-1">(mỗi học sinh thấy thứ tự khác nhau)</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button type="button"
+                    onClick={() => setForm({ ...form, shuffle_options: !form.shuffle_options })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition shrink-0 ${form.shuffle_options ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${form.shuffle_options ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                  <span className="text-sm text-gray-700">
+                    Xáo trộn phương án A/B/C/D
+                    <span className="text-gray-400 text-xs ml-1">(mỗi học sinh thấy thứ tự đáp án khác nhau)</span>
+                  </span>
+                </div>
               </div>
 
               <div className="border-t border-gray-100 pt-3 space-y-3">
