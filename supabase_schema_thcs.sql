@@ -329,6 +329,9 @@ create policy "quiz_sessions: read own or teacher"
   using (auth.uid() = user_id or public.is_teacher());
 create policy "quiz_sessions: student insert own"
   on public.quiz_sessions for insert with check (auth.uid() = user_id);
+create policy "quiz_sessions: teacher update essay_grades"
+  on public.quiz_sessions for update
+  using (public.is_teacher());
 create policy "quiz_sessions: admin delete"
   on public.quiz_sessions for delete using (public.is_admin());
 
