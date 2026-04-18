@@ -102,13 +102,14 @@ const QUESTION_TYPES = {
   word_order: 'Sắp xếp từ',
 }
 
-export default function QuestionImportModal({ onClose, onSaved, grades, topics }) {
+export default function QuestionImportModal({ onClose, onSaved, grades, topics, subjects }) {
   const [step, setStep] = useState(1) // 1: paste, 2: preview & edit
   const [rawText, setRawText] = useState('')
   const [showGuide, setShowGuide] = useState(false)
   const [parsed, setParsed] = useState([])
-  const firstTopic = topics.find(t => t.grade === grades[0])?.name || ''
-  const [meta, setMeta] = useState({ grade: grades[0], topic: firstTopic, difficulty: 'easy' })
+  const firstSubjectId = subjects[0]?.id || ''
+  const firstTopic = topics.find(t => t.subject_id === firstSubjectId && t.grade === grades[0])?.name || ''
+  const [meta, setMeta] = useState({ grade: grades[0], topic: firstTopic, difficulty: 'easy', subject_id: firstSubjectId })
   const [saving, setSaving] = useState(false)
 
   function handleParse() {
@@ -210,6 +211,7 @@ export default function QuestionImportModal({ onClose, onSaved, grades, topics }
         grade: meta.grade,
         topic: meta.topic,
         difficulty: meta.difficulty,
+        subject_id: meta.subject_id,
       }))
       const { error } = await supabase.from('questions').insert(rows)
       if (error) throw error
@@ -237,23 +239,36 @@ export default function QuestionImportModal({ onClose, onSaved, grades, topics }
           {step === 1 ? (
             <div className="space-y-4">
               {/* Meta */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Môn học</label>
+                  <select value={meta.subject_id} onChange={e => {
+                    const sid = e.target.value
+                    const first = topics.find(t => t.subject_id === sid && t.grade === meta.grade)?.name || ''
+                    setMeta({ ...meta, subject_id: sid, topic: first })
+                  }}
+                    className="w-full border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Khối</label>
                   <select value={meta.grade} onChange={e => {
                     const g = e.target.value
-                    const first = topics.find(t => t.grade === g)?.name || ''
+                    const first = topics.find(t => t.subject_id === meta.subject_id && t.grade === g)?.name || ''
                     setMeta({ ...meta, grade: g, topic: first })
                   }}
                     className="w-full border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     {grades.map(g => <option key={g} value={g}>Khối {g}</option>)}
                   </select>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Chủ đề</label>
                   <select value={meta.topic} onChange={e => setMeta({ ...meta, topic: e.target.value })}
                     className="w-full border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    {topics.filter(t => t.grade === meta.grade).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                    {topics.filter(t => t.subject_id === meta.subject_id && t.grade === meta.grade).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                   </select>
                 </div>
                 <div>
