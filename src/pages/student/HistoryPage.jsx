@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { Clock, BookOpen, FileText, X, CheckCircle, XCircle, MinusCircle } from 'lucide-react'
+import { Clock, BookOpen, FileText, X, CheckCircle, XCircle, MinusCircle, ExternalLink } from 'lucide-react'
 
 function ReviewModal({ session, examTitle, onClose }) {
   const [questions, setQuestions] = useState([])
@@ -112,8 +112,39 @@ function ReviewModal({ session, examTitle, onClose }) {
                       </div>
                     )}
 
+                    {/* Câu tự luận */}
+                    {q.type === 'essay' && (() => {
+                      const essayGrade = session.essay_grades?.[i]
+                      const text = typeof studentAns === 'object' ? studentAns?.text : studentAns
+                      const fileUrl = typeof studentAns === 'object' ? studentAns?.file_url : null
+                      const fileName = typeof studentAns === 'object' ? studentAns?.file_name : null
+                      return (
+                        <div className="space-y-2 text-sm">
+                          <div className="bg-white rounded-lg p-3 border border-gray-200">
+                            <p className="text-xs text-gray-400 mb-1">Bài làm của bạn:</p>
+                            <p className="text-gray-700 whitespace-pre-wrap">{text || <span className="italic text-gray-400">(không có nội dung)</span>}</p>
+                            {fileUrl && (
+                              <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-indigo-600 hover:underline text-xs mt-2">
+                                <ExternalLink size={11} /> {fileName || 'Xem file đính kèm'}
+                              </a>
+                            )}
+                          </div>
+                          {essayGrade ? (
+                            <div className="flex items-center gap-2 text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                              <CheckCircle size={14} className="text-green-600 shrink-0" />
+                              <span className="text-green-700 font-medium">Điểm: {essayGrade.score}</span>
+                              {essayGrade.comment && <span className="text-gray-600">— {essayGrade.comment}</span>}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">⏳ Chờ giáo viên chấm</p>
+                          )}
+                        </div>
+                      )
+                    })()}
+
                     {/* Các dạng khác: hiện đáp án học sinh + đáp án đúng */}
-                    {q.type !== 'multiple_choice' && (
+                    {q.type !== 'multiple_choice' && q.type !== 'essay' && (
                       <div className="space-y-1.5 text-sm">
                         <div className="flex gap-2">
                           <span className="text-gray-500 shrink-0">Bạn trả lời:</span>

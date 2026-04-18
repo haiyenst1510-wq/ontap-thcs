@@ -1,5 +1,6 @@
 // So sánh đáp án học sinh với đáp án đúng theo từng loại câu hỏi
 export function normalizeAnswer(type, ans, correct) {
+  if (type === 'essay') return false
   if (!ans) return false
   if (type === 'word_order') {
     const studentSentence = ans.split(',').map(w => w.trim()).join(' ')

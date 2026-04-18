@@ -12,7 +12,8 @@ const TYPES = [
   { value: 'matching', label: 'Nối đôi' },
   { value: 'ordering', label: 'Sắp xếp' },
   { value: 'drag_word', label: 'Kéo thả từ' },
-  { value: 'word_order', label: 'Sắp xếp từ' }, // dạng mới: ghép từ thành câu (tiếng Anh)
+  { value: 'word_order', label: 'Sắp xếp từ' },
+  { value: 'essay', label: 'Tự luận' },
 ]
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
@@ -172,6 +173,7 @@ export default function QuestionFormModal({ onClose, onDone, defaultSubjectId })
     items: ['', '', ''],
     drag_answers: [''],
     drag_distractors: ['', ''],
+    allow_file: false,
   })
   const [saving, setSaving] = useState(false)
 
@@ -239,6 +241,11 @@ export default function QuestionFormModal({ onClose, onDone, defaultSubjectId })
           correct_answer: form.correct_answer.trim(), // lưu cả câu, không tách
         }
       }
+      case 'essay':
+        return {
+          options: [{ allow_file: form.allow_file }],
+          correct_answer: form.correct_answer.trim() || null,
+        }
       default: return null
     }
   }
@@ -602,6 +609,34 @@ export default function QuestionFormModal({ onClose, onDone, defaultSubjectId })
                     <Plus size={14} /> Thêm từ gây nhiễu
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+          {/* Tự luận */}
+          {form.type === 'essay' && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 rounded-lg px-3 py-2 text-sm text-blue-700">
+                Câu tự luận — học sinh gõ bài làm và/hoặc nộp file. Giáo viên chấm điểm thủ công.
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Gợi ý / Đáp án mẫu <span className="text-xs font-normal text-gray-400">(chỉ giáo viên thấy khi chấm)</span>
+                </label>
+                <textarea
+                  value={form.correct_answer}
+                  onChange={e => setForm({ ...form, correct_answer: e.target.value })}
+                  rows={3}
+                  placeholder="Nhập đáp án mẫu hoặc tiêu chí chấm điểm..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="button"
+                  onClick={() => setForm({ ...form, allow_file: !form.allow_file })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition shrink-0 ${form.allow_file ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${form.allow_file ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+                <span className="text-sm text-gray-700">Cho phép học sinh nộp file đính kèm</span>
               </div>
             </div>
           )}

@@ -19,8 +19,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { CheckCircle, XCircle, Clock, ChevronRight, RotateCcw, ArrowUp, ArrowDown } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, ChevronRight, RotateCcw, ArrowUp, ArrowDown, Paperclip } from 'lucide-react'
 import { normalizeAnswer } from '../../utils/normalizeAnswer'
+import toast from 'react-hot-toast'
+
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 
 // Chuẩn hóa mảng options về dạng [{key, text}]
 // Xử lý nhiều định dạng dữ liệu khác nhau trong database:
@@ -39,6 +43,72 @@ function normalizeOptions(options) {
     if (keys.length >= 1 && keys[0].length === 1) return { key: keys[0], text: opt[keys[0]], image_url: opt.image_url || '' }
     return { key: fallbackKey, text: opt.text || opt.value || opt.label || '', image_url: opt.image_url || '' }
   })
+}
+
+// EssayQuestion — câu tự luận, học sinh gõ bài và/hoặc nộp file
+function EssayQuestion({ q, value, onChange, disabled }) {
+  const allowFile = q.options?.[0]?.allow_file
+  const [uploading, setUploading] = useState(false)
+  const text = value?.text || ''
+  const fileUrl = value?.file_url || ''
+  const fileName = value?.file_name || ''
+
+  async function handleFileUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 20 * 1024 * 1024) { toast.error('File tối đa 20MB'); return }
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('upload_preset', UPLOAD_PRESET)
+    const isImage = file.type.startsWith('image/')
+    const endpoint = isImage
+      ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
+      : `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`
+    try {
+      const res = await fetch(endpoint, { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok || json.error) { toast.error('Upload thất bại'); return }
+      onChange({ text, file_url: json.secure_url, file_name: file.name })
+    } catch { toast.error('Upload thất bại') }
+    finally { setUploading(false) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <textarea
+        value={text}
+        onChange={e => onChange({ file_url: fileUrl, file_name: fileName, text: e.target.value })}
+        disabled={disabled}
+        rows={7}
+        placeholder="Nhập bài làm của bạn tại đây..."
+        className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-indigo-500 resize-none disabled:bg-gray-50"
+      />
+      {allowFile && (
+        fileUrl ? (
+          <div className="flex items-center gap-2 text-sm text-indigo-700 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-200">
+            <Paperclip size={14} className="shrink-0" />
+            <span className="flex-1 truncate">{fileName || 'File đã nộp'}</span>
+            {!disabled && (
+              <button onClick={() => onChange({ text, file_url: '', file_name: '' })}
+                className="text-red-400 hover:text-red-600 text-lg leading-none">×</button>
+            )}
+          </div>
+        ) : (
+          <label className={`flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border-2 border-dashed cursor-pointer transition w-full
+            ${uploading || disabled ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400'
+            : 'border-gray-300 hover:border-indigo-400 text-gray-500 hover:text-indigo-600'}`}>
+            <Paperclip size={14} />
+            {uploading ? 'Đang tải lên...' : 'Đính kèm file (PDF, Word, ảnh...)'}
+            <input type="file" className="hidden" disabled={uploading || disabled}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
+              onChange={handleFileUpload} />
+          </label>
+        )
+      )}
+      <p className="text-xs text-gray-400">Câu tự luận — giáo viên sẽ chấm điểm sau khi nộp bài.</p>
+    </div>
+  )
 }
 
 // Hàm trộn ngẫu nhiên một mảng (thuật toán Fisher-Yates)
@@ -91,6 +161,10 @@ export default function QuizSession({
     }
   }
 
+  function handleEssayChange(value) {
+    setAnswers(prev => ({ ...prev, [current]: value }))
+  }
+
   // Bấm "Xác nhận" — lưu đáp án và hiện kết quả đúng/sai
   function handleConfirm() {
     if (!selected || !showAnswer) return
@@ -128,13 +202,17 @@ export default function QuizSession({
     const finalAnswers = { ...answers }
     if (selected && !confirmed) finalAnswers[current] = selected
 
-    // Đếm số câu đúng
+    // Đếm số câu đúng (essay không tính tự động)
     let correct = 0
+    const autoQuestions = questions.filter(q => q.type !== 'essay')
     questions.forEach((q, i) => {
+      if (q.type === 'essay') return
       if (normalizeAnswer(q.type, finalAnswers[i], q.correct_answer)) correct++
     })
-    // Tính điểm theo thang 10, làm tròn 1 chữ số thập phân
-    const score = Math.round((correct / questions.length) * 10 * 10) / 10
+    // Điểm chỉ tính trên câu tự động, essay chờ giáo viên chấm
+    const score = autoQuestions.length > 0
+      ? Math.round((correct / autoQuestions.length) * 10 * 10) / 10
+      : 0
 
     try {
       if (examMode && examId) {
@@ -182,11 +260,14 @@ export default function QuizSession({
     )
   }
 
-  const isCorrect = confirmed && normalizeAnswer(q.type, selected, q.correct_answer)
-  // Đếm số câu đã trả lời (dùng cho thanh tiến trình)
-  const answeredCount = showAnswer
-    ? Object.keys(answers).length + (selected && !confirmed ? 1 : 0)
-    : Object.keys(answers).length
+  const isCorrect = q.type !== 'essay' && confirmed && normalizeAnswer(q.type, selected, q.correct_answer)
+  function isAnsweredAt(i) {
+    const a = answers[i]
+    if (a == null) return !!(showAnswer && i === current && selected)
+    if (typeof a === 'object') return !!(a.text?.trim() || a.file_url)
+    return true
+  }
+  const answeredCount = questions.filter((_, i) => isAnsweredAt(i)).length
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -361,6 +442,17 @@ export default function QuizSession({
                 disabled={confirmed && showAnswer}
               />
             )}
+
+            {/* Loại tự luận */}
+            {q.type === 'essay' && (
+              <EssayQuestion
+                key={current}
+                q={q}
+                value={answers[current]}
+                onChange={handleEssayChange}
+                disabled={false}
+              />
+            )}
           </div>
 
           {/* Phản hồi đúng/sai (chỉ hiện sau khi xác nhận, khi showAnswer=true) */}
@@ -376,7 +468,15 @@ export default function QuizSession({
 
           {/* Nút hành động — thay đổi tùy trạng thái */}
           <div className="max-w-3xl mx-auto">
-            {!showAnswer ? (
+            {q.type === 'essay' ? (
+              // Câu tự luận: không cần xác nhận, luôn có thể tiếp theo
+              <button
+                onClick={handleNext}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-xl transition flex items-center justify-center gap-2 text-base"
+              >
+                {isLastQuestion ? 'Nộp bài' : <><span>Câu tiếp theo</span><ChevronRight size={18} /></>}
+              </button>
+            ) : !showAnswer ? (
               // Chế độ thi: không cần xác nhận, chọn xong → Tiếp theo
               <button
                 onClick={handleNext}
@@ -415,7 +515,7 @@ export default function QuizSession({
           {/* Grid các nút số câu — mỗi nút có màu khác nhau tùy trạng thái */}
           <div className="grid gap-2.5 mb-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(2rem, 1fr))' }}>
             {questions.map((_, i) => {
-              const isAnswered = answers[i] !== undefined || (showAnswer && i === current && selected)
+              const isAnswered = isAnsweredAt(i)
               const isCurrent = i === current
               let cls = 'w-8 h-8 rounded-full text-xs font-semibold flex items-center justify-center cursor-pointer border-2 transition '
               if (isCurrent)

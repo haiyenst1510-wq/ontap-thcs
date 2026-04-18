@@ -78,7 +78,8 @@ create table if not exists public.questions (
                    'matching',
                    'ordering',
                    'drag_word',
-                   'word_order'
+                   'word_order',
+                   'essay'
                  )),
   options        jsonb default '[]',
   -- [{key:"A", text:"...", image_url:"..."}]
@@ -133,6 +134,7 @@ create table if not exists public.quiz_sessions (
   correct        integer not null,
   score          numeric(4,1) not null,
   answers        jsonb default '{}',
+  essay_grades   jsonb default '{}',
   question_ids   uuid[] default '{}',
   attempt_number integer default 1,
   submitted_at   timestamptz default now(),

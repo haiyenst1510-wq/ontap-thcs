@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Loader2, ExternalLink, Save } from 'lucide-react'
 import { normalizeAnswer } from '../../utils/normalizeAnswer'
+import toast from 'react-hot-toast'
 
 export default function ExamResultsPage() {
   const { id } = useParams()
@@ -13,8 +14,10 @@ export default function ExamResultsPage() {
   const [filterClass, setFilterClass] = useState('')
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedStudent, setSelectedStudent] = useState(null) // { profile, sessions }
+  const [selectedStudent, setSelectedStudent] = useState(null)
   const [selectedSession, setSelectedSession] = useState(null)
+  const [essayGrades, setEssayGrades] = useState({}) // { sessionId: { "i": { score, comment } } }
+  const [savingGrade, setSavingGrade] = useState(null) // index đang lưu
 
   useEffect(() => { loadData() }, [id])
 
@@ -35,17 +38,34 @@ export default function ExamResultsPage() {
     }
 
     const { data: qData } = await supabase.from('questions')
-      .select('id, question, correct_answer, type')
+      .select('id, question, correct_answer, type, options')
       .in('id', examData.question_ids)
     const ordered = examData.question_ids.map(qid => qData?.find(q => q.id === qid)).filter(Boolean)
 
     const { data: classData } = await supabase.from('classes').select('name').eq('grade', examData.grade).order('name')
 
+    const gradesMap = {}
+    ;(sessionData || []).forEach(s => {
+      if (s.essay_grades) gradesMap[s.id] = s.essay_grades
+    })
+    setEssayGrades(gradesMap)
     setExam(examData)
     setSessions((sessionData || []).map(s => ({ ...s, profile: profileMap[s.user_id] })))
     setQuestions(ordered)
     setClasses(classData?.map(c => c.name) || [])
     setLoading(false)
+  }
+
+  async function saveEssayGrade(sessionId, qIndex, score, comment) {
+    setSavingGrade(qIndex)
+    const current = essayGrades[sessionId] || {}
+    const updated = { ...current, [qIndex]: { score, comment } }
+    const { error } = await supabase.from('quiz_sessions')
+      .update({ essay_grades: updated }).eq('id', sessionId)
+    if (error) { toast.error('Lưu thất bại'); setSavingGrade(null); return }
+    setEssayGrades(prev => ({ ...prev, [sessionId]: updated }))
+    toast.success('Đã lưu điểm')
+    setSavingGrade(null)
   }
 
   // Group by student
@@ -130,21 +150,76 @@ export default function ExamResultsPage() {
               {/* Question breakdown */}
               {questions.map((q, i) => {
                 const ans = activeSession.answers?.[i]
+                const sessionGrades = essayGrades[activeSession.id] || {}
+                const existingGrade = sessionGrades[i]
+
+                if (q.type === 'essay') {
+                  const essayAns = ans || {}
+                  const text = typeof essayAns === 'object' ? essayAns.text : essayAns
+                  const fileUrl = typeof essayAns === 'object' ? essayAns.file_url : null
+                  const fileName = typeof essayAns === 'object' ? essayAns.file_name : null
+                  const [localScore, setLocalScore] = useState(existingGrade?.score ?? '')
+                  const [localComment, setLocalComment] = useState(existingGrade?.comment ?? '')
+
+                  return (
+                    <div key={q.id} className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4 text-sm space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-800">{i + 1}. {q.question}</span>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full shrink-0">Tự luận</span>
+                      </div>
+                      {q.correct_answer && (
+                        <p className="text-xs text-gray-500 italic">Đáp án mẫu: {q.correct_answer}</p>
+                      )}
+                      <div className="bg-white rounded-lg p-3 border border-blue-100">
+                        <p className="text-xs text-gray-400 mb-1">Bài làm của học sinh:</p>
+                        <p className="text-gray-700 whitespace-pre-wrap">{text || <span className="text-gray-400 italic">(không có nội dung)</span>}</p>
+                        {fileUrl && (
+                          <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-indigo-600 hover:underline text-xs mt-2">
+                            <ExternalLink size={11} /> {fileName || 'Xem file đính kèm'}
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex gap-2 items-end">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Điểm</label>
+                          <input type="number" min={0} max={10} step={0.5}
+                            value={localScore}
+                            onChange={e => setLocalScore(e.target.value)}
+                            className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="0–10" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs text-gray-500 block mb-1">Nhận xét</label>
+                          <input type="text"
+                            value={localComment}
+                            onChange={e => setLocalComment(e.target.value)}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Nhận xét (tuỳ chọn)" />
+                        </div>
+                        <button
+                          onClick={() => saveEssayGrade(activeSession.id, i, Number(localScore), localComment)}
+                          disabled={savingGrade === i || localScore === ''}
+                          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50 shrink-0">
+                          {savingGrade === i ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                          Lưu
+                        </button>
+                      </div>
+                      {existingGrade && (
+                        <p className="text-xs text-green-700">✓ Đã chấm: {existingGrade.score} điểm{existingGrade.comment ? ` — ${existingGrade.comment}` : ''}</p>
+                      )}
+                    </div>
+                  )
+                }
+
                 const isOk = normalizeAnswer(q.type, ans, q.correct_answer)
                 return (
-                  <div
-                    key={q.id}
-                    className={`rounded-xl border p-3 text-sm ${isOk ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}
-                  >
+                  <div key={q.id}
+                    className={`rounded-xl border p-3 text-sm ${isOk ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
                     <p className="font-medium text-gray-800 mb-1">{i + 1}. {q.question}</p>
                     {isOk
                       ? <p className="text-green-700">✓ {ans}</p>
-                      : (
-                        <p className="text-red-600">
-                          ✗ Học sinh: <strong>{ans || '(bỏ qua)'}</strong>
-                          {' '}— Đúng: <strong>{q.correct_answer}</strong>
-                        </p>
-                      )
+                      : <p className="text-red-600">✗ Học sinh: <strong>{ans || '(bỏ qua)'}</strong>{' '}— Đúng: <strong>{q.correct_answer}</strong></p>
                     }
                   </div>
                 )
