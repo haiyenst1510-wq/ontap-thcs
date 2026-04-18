@@ -90,6 +90,16 @@ C. ROM
 
 (Cột trái: A/B/C — Cột phải: >1. >2. >3. — Đáp án: A-số,B-số,C-số)`,
   },
+  {
+    type: 'Tự luận',
+    color: 'bg-pink-50 border-pink-200',
+    labelColor: 'text-pink-700 bg-pink-100',
+    example: `Câu 9: [TL] Hãy giải thích khái niệm thuật toán.
+Gợi ý: Thuật toán là tập hợp các bước hữu hạn để giải quyết một bài toán.
+[File]
+
+([TL] = tự luận — Gợi ý: = đáp án mẫu — [File] = cho phép nộp file)`,
+  },
 ]
 
 const QUESTION_TYPES = {
@@ -100,6 +110,7 @@ const QUESTION_TYPES = {
   ordering: 'Sắp xếp',
   drag_word: 'Kéo thả từ',
   word_order: 'Sắp xếp từ',
+  essay: 'Tự luận',
 }
 
 export default function QuestionImportModal({ onClose, onSaved, grades, topics, subjects }) {
@@ -545,6 +556,37 @@ export default function QuestionImportModal({ onClose, onSaved, grades, topics, 
                           className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 w-full"
                         />
                       </div>
+                    </div>
+                  )}
+
+                  {/* Tự luận */}
+                  {q.type === 'essay' && (
+                    <div className="space-y-2">
+                      <div className="bg-pink-50 border border-pink-200 rounded-lg px-3 py-2 text-xs text-pink-700">
+                        Câu hỏi tự luận — học sinh trả lời bằng văn bản
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Đáp án mẫu / Gợi ý chấm điểm (tùy chọn)</label>
+                        <textarea
+                          value={q.correct_answer || ''}
+                          onChange={e => updateQuestion(i, 'correct_answer', e.target.value)}
+                          rows={2}
+                          placeholder="Đáp án mẫu để giáo viên tham khảo khi chấm..."
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={q.options?.[0]?.allow_file || false}
+                          onChange={e => {
+                            const allow_file = e.target.checked
+                            updateQuestion(i, 'options', [{ allow_file }])
+                          }}
+                          className="rounded"
+                        />
+                        <span className="text-gray-700">Cho phép học sinh nộp file đính kèm</span>
+                      </label>
                     </div>
                   )}
 

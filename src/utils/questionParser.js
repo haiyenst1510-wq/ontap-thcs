@@ -36,6 +36,11 @@
  *   A. CPU   B. RAM   C. ROM
  *   >1. Bộ nhớ chỉ đọc   >2. Bộ xử lý trung tâm   >3. Bộ nhớ tạm thời
  *   Đáp án: A-2,B-3,C-1
+ *
+ * [Tự luận] — thêm [TL] vào đầu câu hỏi, Gợi ý: là đáp án mẫu, [File] = cho phép nộp file
+ *   Câu 8: [TL] Hãy giải thích khái niệm thuật toán.
+ *   Gợi ý: Thuật toán là tập hợp các bước hữu hạn...
+ *   [File]
  */
 
 export function parseQuestions(rawText) {
@@ -50,19 +55,40 @@ export function parseQuestions(rawText) {
     const questionMatch = line.match(/^(?:Câu\s*)?(\d+)[.):]\s*(.+)$/i)
     if (questionMatch) {
       if (current) questions.push(finalizeQuestion(current))
+      let questionText = questionMatch[2]
+      let isEssay = false
+      // Detect [TL] / [tự luận] / [essay] prefix
+      if (/^\[(?:TL|tự luận|essay)\]\s*/i.test(questionText)) {
+        questionText = questionText.replace(/^\[(?:TL|tự luận|essay)\]\s*/i, '')
+        isEssay = true
+      }
       current = {
         order: parseInt(questionMatch[1]),
-        question: questionMatch[2],
-        type: 'fill_blank',
+        question: questionText,
+        type: isEssay ? 'essay' : 'fill_blank',
         options: [],
         match_options: [],   // cột phải cho dạng nối đôi
         correct_answer: null,
+        allow_file: false,
         image_url: null,
       }
       continue
     }
 
     if (!current) continue
+
+    // Detect [File] standalone line → allow file upload for essay
+    if (/^\[File\]$/i.test(line)) {
+      current.allow_file = true
+      continue
+    }
+
+    // Detect "Gợi ý:" line → rubric/sample answer for essay
+    const hintMatch = line.match(/^Gợi ý[:\s]+(.+)$/i)
+    if (hintMatch) {
+      current.correct_answer = hintMatch[1].trim()
+      continue
+    }
 
     // Detect matching right-side items: ">1. text" or ">1) text"
     const matchRightMatch = line.match(/^>(\d+)[.)]\s*(.+)$/)
@@ -109,6 +135,12 @@ export function parseQuestions(rawText) {
 
 function finalizeQuestion(q) {
   const ans = (q.correct_answer || '').trim()
+
+  // Essay: set options to carry allow_file flag
+  if (q.type === 'essay') {
+    q.options = [{ allow_file: q.allow_file || false }]
+    return q
+  }
 
   // Detect true/false from question text
   if (
