@@ -242,10 +242,10 @@ export default function QuizSession({
           {/* Khu vực đáp án — render theo loại câu hỏi */}
           <div className="space-y-3 mb-6 max-w-3xl mx-auto">
             {/* Loại trắc nghiệm: render từng lựa chọn A, B, C, D */}
-            {q.type === 'multiple_choice' && normalizeOptions(q.options).map(opt => (
+            {q.type === 'multiple_choice' && normalizeOptions(q.options).map((opt, idx) => (
               <OptionButton
                 key={opt.key}
-                label={opt.key}
+                label={String.fromCharCode(65 + idx)}
                 text={opt.text}
                 imageUrl={opt.image_url}
                 selected={selected === opt.key}
